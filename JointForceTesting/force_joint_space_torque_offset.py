@@ -47,18 +47,18 @@ class torque_offsets:
 	# remove first joint residual value
 	def reset_first_joint(self, current_pos, depth):
 		self._robot.move(PyKDL.Vector(current_pos, 0.01, depth))
-        self._robot.move(PyKDL.Vector(current_pos, -0.01, depth))
-        self._robot.move(PyKDL.Vector(current_pos,  0.01, depth))
-        self._robot.move(PyKDL.Vector(current_pos, -0.01, depth))
-        self._robot.move(PyKDL.Vector(current_pos, 0.0, depth))
+	        self._robot.move(PyKDL.Vector(current_pos, -0.01, depth))
+	        self._robot.move(PyKDL.Vector(current_pos,  0.01, depth))
+	        self._robot.move(PyKDL.Vector(current_pos, -0.01, depth))
+	        self._robot.move(PyKDL.Vector(current_pos, 0.0, depth))
         
 	# remove second joint residual value
 	def reset_second_joint(self, current_pos, depth):
 		self._robot.move(PyKDL.Vector(0.01, current_pos, depth))
-        self._robot.move(PyKDL.Vector(-0.01, current_pos, depth))
-        self._robot.move(PyKDL.Vector( 0.01, current_pos, depth))
-        self._robot.move(PyKDL.Vector(-0.01, current_pos, depth))
-        self._robot.move(PyKDL.Vector(0.0, current_pos, depth))
+	        self._robot.move(PyKDL.Vector(-0.01, current_pos, depth))
+	        self._robot.move(PyKDL.Vector( 0.01, current_pos, depth))
+	        self._robot.move(PyKDL.Vector(-0.01, current_pos, depth))
+	        self._robot.move(PyKDL.Vector(0.0, current_pos, depth))
 
     # reset one of the joints residual values
 	def reset_condition(self, jointUnderTesting, current_pos, depth):
@@ -70,11 +70,16 @@ class torque_offsets:
 		time.sleep(.02)
 
 	# set robot position depending on the joint under testing
-	def set_position(self, jointUnderTesting, commanded_pos, depth, isFirstPosition):
+	def set_position(self, jointUnderTesting, commanded_pos, depth):
+		print "current position:", commanded_pos
+
 		if jointUnderTesting == 0:
 			self._robot.move(PyKDL.Vector(commanded_pos, 0.0, depth))
 		elif jointUnderTesting == 1:
 			self._robot.move(PyKDL.Vector(0.0, commanded_pos, depth))
+
+		# remove residual value at each position
+			self.reset_condition(jointUnderTesting, commanded_pos, depth)
 	
 	# get current joint effort, position, and depth
 	def get_joint_information(self, jointUnderTesting):
@@ -92,23 +97,26 @@ class torque_offsets:
 		# print "average joint depth = ", self.avg_depth[-1]
 
 	 # measures the torque offsets on 3 different depth (8, 16, 24)
-	def get_torque_offset(self, jointUnderTesting):
+	def collect_data(self, jointUnderTesting):
 		depthIndex = 0
+		current_position = self.CONST_MIN
 		
 		for depthIndex in range(self.CONST_DEPTH):
-			self.depth_index.append(depthIndex) # append depth index list for writing on file
 			depth = -0.08 + (-0.08 * (depthIndex)) # calculate the instrument depth
 			position_index = 0
-			print "position recorded: ", position_index
-			current_position = self.CONST_MIN + (depthIndex * self.CONST_DELTA_POSITION)
+			print "position recorded:", position_index
+			
 			# set the robot starting position
-			self.set_starting_position(jointUnderTesting, current_position, depth)
-			# remove residual value at each position
-			self.reset_condition(jointUnderTesting, commanded_pos, depth)
+			current_position = self.CONST_MIN - (depthIndex * self.CONST_DELTA_POSITION)
+			self.set_position(jointUnderTesting, current_position, depth)
+			
 			time.sleep(1)
-			print "depth: ", depth
+			print "depth:", depth
 
-			max_position = self.CONST_MAX_POS + (depthIndex * self.CONST_DELTA_POSITION)
+			max_position = self.CONST_MAX + (depthIndex * self.CONST_DELTA_POSITION)
+			print "max position:", max_position
+
+			# TODO: use do-while loop might be better
 			while (current_position <= max_position):
 				sampleIndex = 0
 				
@@ -120,12 +128,13 @@ class torque_offsets:
 				# calculate average values
 				self.get_average_values()
 				# increment the robot position
-				current_position = self.CONST_DEGREE_INCREMENT + (self.CONST_DEGREE_INCREMENT * position_index)
+				current_position += self.CONST_DEGREE_INCREMENT + (self.CONST_DEGREE_INCREMENT * depthIndex)	
 				position_index += 1
 				print "position recorded: ", position_index
 				self.set_position(jointUnderTesting, current_position, depth)
 				time.sleep(2)
 
+			self.depth_index.append(depthIndex) # append depth index list for writing on file
 
 	# to move the robot arm to a ready position and remove residual values
 	def run(self):
@@ -142,7 +151,7 @@ class torque_offsets:
 		time.sleep(3)
 		
 		# start collecting data
-		self.get_torque_offset(jointUnderTesting)
+		self.collect_data(jointUnderTesting)
 		# file output
    
 #main()
