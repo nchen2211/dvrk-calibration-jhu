@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #Created on June 7, 2017
-#Author: Grace Chrysilla
+#Author: GChry
 
 import sys
 from dvrk.psm import *
@@ -18,7 +18,7 @@ class torque_offsets:
 	# const min, max, increment are not the above value due to discrepancy real-time values 
 
 	# 8 -> 0.039   i = 0
-	# 16 -> 0.084  i = 1		delta = 0.045
+	# 16 -> 0.084  i = 1		delt = 0.045
 	# 24 -> 0.127  i = 2		
 	CONST_MIN = -0.039
 	CONST_MAX = 0.039
