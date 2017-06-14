@@ -30,13 +30,23 @@ class torque_offsets:
 	# Model: min position = -0.05, max position = 0.05, increment = 0.02. 
 	# const min, max, increment are not the above value due to discrepancy real-time values 
 
+	# joint 0 (not as precise as joint 1)
+	# 8: min= max= 0.039 
+	# 16: min = max = 0.084
+	# 24: min = max = 0.127
+
+	# new
+	# 8: min = -0.042
+
+	# joint 1
 	# 8 -> 0.039   i = 0
 	# 16 -> 0.084  i = 1		delt = 0.045
-	# 24 -> 0.127  i = 2		
+	# 24 -> 0.127  i = 2
+
 	CONST_MIN = -0.039
 	CONST_MAX = 0.039
 	CONST_DELTA_POSITION = 0.045
-	CONST_DEGREE_INCREMENT = 0.013
+	CONST_DEGREE_INCREMENT = 0.0156
 
 	CONST_DEPTH = 3
 	CONST_TOTAL_SAMPLE = 20
@@ -76,30 +86,35 @@ class torque_offsets:
 
 	# set robot position depending on the joint under testing
 	def set_position(self, jointUnderTesting, commanded_pos, depth):
-		print "current position:", commanded_pos
-
 		if jointUnderTesting == 0:
 			self._robot.move(PyKDL.Vector(commanded_pos, 0.0, depth))
 		elif jointUnderTesting == 1:
 			self._robot.move(PyKDL.Vector(0.0, commanded_pos, depth))
 
 		# remove residual value at each position
-			self.reset_condition(jointUnderTesting, commanded_pos, depth)
+		self.reset_condition(jointUnderTesting, commanded_pos, depth)
+
+	# reset all summation to zero
+	def reset_summation(self):
+		self.robot_arm.current_joint_position = 0.0
+		self.robot_arm.current_joint_effort = 0.0
+		self.robot_arm.joint_depth = 0.0
 	
-	# get current joint effort, position, and depth
+	# get sum of current joint effort, position, and depth
 	def get_joint_information(self, jointUnderTesting):
 		self.robot_arm.current_joint_effort += self._robot.get_current_joint_effort()[jointUnderTesting]
-		self.robot_arm.current_joint_position += self._robot.get_current_joint_position()[jointUnderTesting]
-		self.robot_arm.joint_depth += self._robot.get_current_joint_position()[2]
+		self.robot_arm.current_joint_position += self._robot.get_desired_joint_position()[jointUnderTesting]
+		self.robot_arm.joint_depth += self._robot.get_desired_joint_position()[2]
 
 	# calculate the average for current joint effort, position, and depth
 	def get_average_values(self):
+		# print 'sum position', self.robot_arm.current_joint_position
 		self.robot_arm.avg_cur_joint_efforts.append(self.robot_arm.current_joint_effort / float(self.CONST_TOTAL_SAMPLE)) 
 		self.robot_arm.avg_cur_joint_positions.append(self.robot_arm.current_joint_position / float(self.CONST_TOTAL_SAMPLE))
 		self.robot_arm.avg_depth.append(self.robot_arm.joint_depth / float(self.CONST_TOTAL_SAMPLE))
-		print "average joint effort = ", self.robot_arm.avg_cur_joint_efforts[-1], "\n"
+		# print "average joint effort = ", self.robot_arm.avg_cur_joint_efforts[-1], "\n"
 		# print "average joint position = ", self.avg_cur_joint_positions[-1]
-		# print "average joint depth = ", self.avg_depth[-1]
+		print "average joint depth = ", self.robot_arm.avg_depth[-1]
 
 	 # measures the torque offsets on 3 different depth (8, 16, 24)
 	def collect_data(self, jointUnderTesting):
@@ -108,6 +123,7 @@ class torque_offsets:
 		
 		for depthIndex in range(self.CONST_DEPTH):
 			depth = -0.08 + (-0.08 * (depthIndex)) # calculate the instrument depth
+			print "depth:", depth
 			position_index = 0
 			print "position recorded:", position_index
 			
@@ -116,10 +132,7 @@ class torque_offsets:
 			self.set_position(jointUnderTesting, current_position, depth)
 			
 			time.sleep(1)
-			print "depth:", depth
-
 			max_position = self.CONST_MAX + (depthIndex * self.CONST_DELTA_POSITION)
-			print "max position:", max_position
 
 			while (current_position <= max_position):
 				sampleIndex = 0
@@ -127,17 +140,20 @@ class torque_offsets:
 				for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
 					self.get_joint_information(jointUnderTesting)
 					time.sleep(.02)
-				print "finished collecting data"
+				#print "finished collecting data"
 				
 				# calculate average values
 				self.get_average_values()
 				self.robot_arm.depth_index.append(depthIndex) # append depth index list for writing on file
-				
+
+				# reset summation
+				self.reset_summation()
+
 				# increment the robot position
 				current_position += self.CONST_DEGREE_INCREMENT + (self.CONST_DEGREE_INCREMENT * depthIndex)	
 				if (current_position <= max_position):
 					position_index += 1
-					print "position recorded: ", position_index
+					print "position recorded:", position_index
 					self.set_position(jointUnderTesting, current_position, depth)
 					time.sleep(2)
 
@@ -147,14 +163,17 @@ class torque_offsets:
 		print "\n Values will be saved in:", outputFile
 		f = open(outputFile, 'wb') # wb is used in python to write on file (write binary)
 		writer = csv.writer(f)
-		writer.writerow(["depth index", "current depth", "current joint position", "current joint effort", "zero effort"])
+		writer.writerow(["depth index", "current depth", "current joint position", "current joint effort"])
 
 		for row in range(len(self.robot_arm.avg_cur_joint_positions)):
 			writer.writerow([self.robot_arm.depth_index[row],
 							self.robot_arm.avg_depth[row],
 							self.robot_arm.avg_cur_joint_positions[row],
-							self.robot_arm.avg_cur_joint_efforts[row],
-							self.robot_arm.zeroEffort])
+							self.robot_arm.avg_cur_joint_efforts[row]])
+							#self.robot_arm.zeroEffort])
+
+		# set the robot to neutral position
+		self._robot.move(PyKDL.Vector(0.0, 0.0, -0.08))
 		rospy.signal_shutdown('Finished Task')
 
 	# to move the robot arm to a ready position and remove residual values
@@ -176,6 +195,7 @@ class torque_offsets:
 			self.collect_data(jointUnderTesting)
 			# file output
 			self.write_to_file(jointUnderTesting)
+
    
 #main()
 if (len(sys.argv) != 2):

@@ -8,6 +8,7 @@ import numpy
 import csv
 import os
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.backends.backend_pdf import PdfPages
 import math
@@ -48,7 +49,7 @@ def run():
                 data_files.insert(1,document)
 
     for doc_index in range(len(data_files)):
-        print "document ", doc_index
+       # print "document ", doc_index
         all_slopes = []
         all_offsets = []
         all_depth = []
@@ -69,6 +70,7 @@ def run():
 			# determine first and end index for each depth
             for row in range(1, len(reader)):
                 currentIndex = int(reader[row][0])
+
                 if (currentIndex == depth_index and startIndex == -1):
                     startIndex = row
                 if (currentIndex != depth_index and prevIndex == depth_index and endIndex == -1):
@@ -77,32 +79,40 @@ def run():
                 prevIndex = int(reader[row][0])
                 
                 if (depth_index == 2):
-                    endIndex = (len(reader)) - 1
-                    
+                    endIndex = (len(reader)) - 1;
 
-            # storing joint efforts and joint positions in arrays
-            print ("start index:", startIndex)
-            print ("end index:", endIndex)
-
-            for row in range(endIndex, startIndex, -1):
-            	joint_efforts.append(float(reader[row][3]) - float(reader[row][4]))
+            # storing data into arrays       
+            for row in range(endIndex, startIndex-1, -1):
+            	joint_efforts.append(float(reader[row][3]))
             	joint_positions.append(float(reader[row][2]))
             	joint_depth.append(float(reader[row][1]))
 
             # reverse back to normal order
-            joint_efforts[::-1]
-            joint_positions[::-1]
+            joint_efforts.reverse() # joint_efforts[::-1]
+            print "joint efforts"
+            for e in range(0, len(joint_efforts)):
+                print joint_efforts[e]
+            
+            joint_positions.reverse() #joint_positions[::-1]
+            print "\njoint positions"
+            for e in range(0, len(joint_positions)):
+                print joint_positions[e]
 
+            print "\n\n"
             # plotting
             # fig = plt.figure()
-            plt.plot(joint_efforts, joint_positions, '-', label = ("Depth" + str(joint_depth)))
+            plt.plot(joint_positions, joint_efforts, '-', label = ("Depth " + str(depth_index)))
             joint_efforts[:] = []
             joint_positions[:] = []
             joint_depth[:] = []
 
         # fig.suptitle('depth index ' + (str(depth_index)))     
-        plt.xlabel('Torque offset, N-m')
-        plt.ylabel('Joint position, radians')
+        plt.xlabel('Joint position, radians')
+        plt.ylabel('Torque offset, N-m')
+        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=5, mode="expand", borderaxespad=0.)
+
+
 
         if (doc_index == 0):
         	plt.savefig(Joint1Data, format = 'pdf')
