@@ -98,8 +98,7 @@ class torque_offsets:
         # print "average joint position = ", self.avg_cur_joint_positions[-1]
         # print "average joint depth = ", self.robot_arm.avg_depth[-1]
 
-        # measures the torque offsets on 3 different depth (8, 16, 24)
-    
+    # measures the torque offsets on 5 different depth (8, 12, 16, 20, 24)
     def collect_data(self, jointUnderTesting):
         depthIndex = 0
         current_position = self.CONST_MIN
@@ -162,7 +161,7 @@ class torque_offsets:
 
         # to move the robot arm to a ready position and remove residual values
     def run(self):
-        jointUnderTesting = 0; # changable to 0 or 1 depending on which joint we want to test
+        jointUnderTesting = 1; # changable to 0 or 1 depending on which joint we want to test
         self._robot.move_joint(numpy.array([0.0,0.0,0.1,0.0,0.0,0.0]))
 
         # check to see the third joint is working well
