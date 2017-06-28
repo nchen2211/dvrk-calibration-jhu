@@ -3,7 +3,6 @@
 #Created on June 22, 2017
 #Author: Grace Chrysilla
 
-
 import sys
 from dvrk.psm import *
 import rospy
@@ -33,7 +32,7 @@ class backlash:
     CONST_MAX_EFFORT = 1.5
 
     # for joint 0: positive => rightward, negative => leftward
-    # for joint 1: positive => , negative => 
+    # for joint 1: positive => inward, negative => outward
     # distance from clamp to RCM point = 13.4 cm 
     CONST_POS_DIRECTION = 1
     CONST_NEG_DIRECTION = -1
@@ -49,19 +48,21 @@ class backlash:
         
     # remove first joint residual value
     def reset_first_joint(self, current_pos, depth):
-        self._robot.move_joint(numpy.array([current_pos, 0.01, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([current_pos, -0.01, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([current_pos, 0.01, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([current_pos, -0.01, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([current_pos, 0.0, depth, 0.0, 0.0, 0.0]))
-        
+        self._robot.move(PyKDL.Vector(0.0,  0.01, -0.15))
+        self._robot.move(PyKDL.Vector(0.0, -0.01, -0.15))
+        self._robot.move(PyKDL.Vector(0.0,  0.01, -0.15))
+        self._robot.move(PyKDL.Vector(0.0, -0.01, -0.15))
+        self._robot.move(PyKDL.Vector(0.0, 0.0, -0.15))
+        time.sleep(5)
+
     # remove second joint residual value
     def reset_second_joint(self, current_pos, depth):
-        self._robot.move_joint(numpy.array([0.01, current_pos, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([-0.01, current_pos, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([0.01, current_pos, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([-0.01, current_pos, depth, 0.0, 0.0, 0.0]))
-        self._robot.move_joint(numpy.array([0.0, current_pos, depth, 0.0, 0.0, 0.0]))
+       	self._robot.move(PyKDL.Vector( 0.01, 0.0, -0.15))
+        self._robot.move(PyKDL.Vector(-0.01, 0.0, -0.15))
+        self._robot.move(PyKDL.Vector( 0.01, 0.0, -0.15))
+        self._robot.move(PyKDL.Vector(-0.01, 0.0, -0.15))
+        self._robot.move(PyKDL.Vector(0.0, 0.0, -0.15))
+        time.sleep(5)
 
     # reset one of the joints residual values
     def reset_condition(self, jointUnderTesting, current_pos, depth):
@@ -80,7 +81,7 @@ class backlash:
 
     # get sum of current joint effort, position, and depth
     def get_joint_information(self, jointUnderTesting):
-        self.robot_arm.current_joint_effort += self._robot.get_current_joint_effort()[jointUnderTesting]
+        self.robot_arm.current_joint_effort += self._robot.get_desired_joint_effort()[jointUnderTesting]
         self.robot_arm.current_joint_position += self._robot.get_desired_joint_position()[jointUnderTesting]
         self.robot_arm.joint_depth += self._robot.get_desired_joint_position()[2]
 
@@ -89,9 +90,10 @@ class backlash:
         self.robot_arm.avg_cur_joint_efforts.append(self.robot_arm.current_joint_effort / float(self.CONST_TOTAL_SAMPLE)) 
         self.robot_arm.avg_cur_joint_positions.append(self.robot_arm.current_joint_position / float(self.CONST_TOTAL_SAMPLE))
         self.robot_arm.avg_depth.append(self.robot_arm.joint_depth / float(self.CONST_TOTAL_SAMPLE))
+      
         print "average joint effort = ", self.robot_arm.avg_cur_joint_efforts[-1]
         print "average joint position = ", self.robot_arm.avg_cur_joint_positions[-1]
-        # print "average joint depth = ", self.robot_arm.avg_depth[-1]
+        print "average joint depth = ", self.robot_arm.avg_depth[-1]
         print "\n"
 
      # set robot position depending on the joint under testing
@@ -103,11 +105,32 @@ class backlash:
             self._robot.move(PyKDL.Vector(0.0, (direction * self.CONST_DX * pos_index), self.CONST_DEPTH))
 
     # generate an output file
-    def write_to_file(self, jointUnderTesting):
-        outputFile = 'ForceTestingDataJointSpace/force_joint_space_backlash_output_at_joint_' + str(jointUnderTesting) + '_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
+    def write_to_file(self, jointUnderTesting, direction):
+
+    	write_direction = ""
+    	if (direction == self.CONST_POS_DIRECTION and jointUnderTesting == 0):
+            write_direction = "rightward"
+        elif (direction == self.CONST_NEG_DIRECTION and jointUnderTesting == 0):
+            write_direction = "leftward"
+        elif (direction == self.CONST_POS_DIRECTION and jointUnderTesting == 1):
+            write_direction = "inward"
+        elif (direction == self.CONST_NEG_DIRECTION and jointUnderTesting == 1):
+            write_direction = "outward"
+
+        outputFile = 'ForceTestingDataJointSpace/backlash_output_joint_' + direction + str(jointUnderTesting) + '_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
         print "\n Values will be saved in:", outputFile
         f = open(outputFile, 'wb') # wb is used in python to write on file (write binary)
         writer = csv.writer(f)
+
+        if (direction == self.CONST_POS_DIRECTION and jointUnderTesting == 0):
+            writer.writerow(["(rightward) Joint",jointUnderTesting])
+        elif (direction == self.CONST_NEG_DIRECTION and jointUnderTesting == 0):
+            writer.writerow(["(leftward) Joint",jointUnderTesting])
+        elif (direction == self.CONST_POS_DIRECTION and jointUnderTesting == 1):
+            writer.writerow(["(inward) Joint",jointUnderTesting])
+        elif (direction == self.CONST_NEG_DIRECTION and jointUnderTesting == 1):
+            writer.writerow(["(outward) Joint",jointUnderTesting])
+
         writer.writerow(["depth", "current joint position", "current joint effort"])
 
         for row in range(len(self.robot_arm.avg_cur_joint_positions)):
@@ -115,8 +138,6 @@ class backlash:
                 self.robot_arm.avg_cur_joint_positions[row],
                 self.robot_arm.avg_cur_joint_efforts[row]])
 
-        # set the robot to neutral position
-        self._robot.move_joint(numpy.array([0.0, 0.0, 0.08, 0.0, 0.0, 0.0]))
         rospy.signal_shutdown('Finished Task')
 
     def collect_data(self, jointUnderTesting, direction):
@@ -130,15 +151,15 @@ class backlash:
             for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
-            print "finished collecting samples"
 
             avgEffort = self.robot_arm.current_joint_effort / float(self.CONST_TOTAL_SAMPLE)
             print "avgEffort", avgEffort
-            self.get_average_values()
 
             if (abs(avgEffort) > self.CONST_MAX_EFFORT):
                 isMaxEffort = True
             else:
+                self.get_average_values()
+                self.reset_summation()
                 pos_index += 1
                 self.set_position(jointUnderTesting, pos_index, direction)
                 print "position recorded:", pos_index
@@ -146,10 +167,9 @@ class backlash:
 
         # set robot to rest position
         self._robot.move(PyKDL.Vector(0.0, 0.0, -0.16))
-        self.reset_summation()
 
     def run(self):
-        jointUnderTesting = 0; # changable to 0 or 1 depending on which joint we want to test
+        jointUnderTesting = 1; # changable to 0 or 1 depending on which joint we want to test
         self._robot.move_joint(numpy.array([0.0,0.0,0.1,0.0,0.0,0.0]))
 
         # check to see the third joint is working well
@@ -170,14 +190,12 @@ class backlash:
 
         while not rospy.is_shutdown():
             # start collecting data
-            print "collecting data for joint", jointUnderTesting, "positive direction"
-            self.collect_data(jointUnderTesting, self.CONST_POS_DIRECTION)
+            print "collecting data for joint", jointUnderTesting
+            direction = self.CONST_NEG_DIRECTION
+            self.collect_data(jointUnderTesting, direction)
             time.sleep(2)
-            print "collecting data for joint", jointUnderTesting, "negative direction"
-            self.collect_data(jointUnderTesting, self.CONST_NEG_DIRECTION)
             # file output
-            self.write_to_file(jointUnderTesting)
-
+            self.write_to_file(jointUnderTesting, direction)
 
 #main()
 if (len(sys.argv) != 2):
