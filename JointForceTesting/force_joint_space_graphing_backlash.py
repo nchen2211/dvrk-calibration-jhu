@@ -38,7 +38,6 @@ def run():
 
         # process each relevant file
         for doc_index in range(len(data_files[document_joint_type])):
-            print "evaluating joint", document_joint_type, " on document ", doc_index
             
             joint_efforts = []
             joint_positions = []
@@ -48,11 +47,10 @@ def run():
             reader = list(csv.reader(open('ForceTestingDataJointSpace/' + current_file,"rb"), delimiter=','))
 
             # process each depth
-            for row in range(1, len(reader)): 
+            for row in range(2, len(reader)): 
 
                 # store depths for slope graph
                 all_depth.append(float(reader[row][0]))
-
 
                 # storing data into arrays       
                 joint_positions.append(float(reader[row][1]))
@@ -62,21 +60,17 @@ def run():
                 # slope, offset = numpy.polyfit(joint_efforts, joint_positions, 1)
                 # all_depth_slopes.append(slope)
                 # plt.plot(joint_efforts, joint_positions, '-', label = ("Depth " + str(row)))
-                print "joint efforts:", joint_efforts
-                print "joint position:", joint_positions
-                print "\n"
-                plt.plot(joint_efforts, joint_positions, '-')
+                plt.plot(joint_positions, joint_efforts, '.')
                 # x1, x2, y1, y2 = plt.axis()
                 # plt.axis((x1,x2,-0.2,0.4))
-
 
         # empty array elements
         joint_efforts[:] = []
         joint_positions[:] = []
         joint_depth[:] = []
 
-        plt.xlabel("Joint effort, N-m")
-        plt.ylabel("Joint position, radians")
+        plt.xlabel("Joint position, radians")
+        plt.ylabel("Joint effort, N-m")
         # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
         #    ncol=5, mode="expand", borderaxespad=0.)
 
