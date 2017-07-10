@@ -51,8 +51,7 @@ def get_first_last_index(reader, depth_index, startIndex, endIndex):
 def run(option):
 
     data_files = [ [], [] ]
-    # Joint1Data, Joint2Data, Joint1TorqueOffsetSlope, Joint2TorqueOffsetSlope
-
+  
     # finding the relevant csv files in the directory
     for document in os.listdir("ForceTestingDataJointSpace"):
         if (option == 1):
@@ -66,13 +65,13 @@ def run(option):
             if document.startswith("hysteresis_output_joint"):
                 Joint1Data = create_data_files("Hysteresis", "1")
                 Joint2Data = create_data_files("Hysteresis", "2")
-                # Joint1BestFit = create_data_files("Hysteresis_best_fit", "1")
-                # Joint2BestFit = create_data_files("Hysteresis_best_fit", "2")
                 get_data_file(data_files, document)
         elif (option == 3):
-            if document.startswith("calculate_backlash"): # for calculating backlash
+            if document.startswith("hysteresis_best_line"): # for calculating backlash
+                Joint1Data = create_data_files("Hysteresis_best_fit", "1")
+                Joint2Data = create_data_files("Hysteresis_best_fit", "2")
                 get_data_file(data_files, document)
-                
+
     for document_joint_type in range(len(data_files)):
         # for graphing torque offset slope
         all_depth_slopes = []
@@ -96,23 +95,22 @@ def run(option):
                 plotting_slope(document_joint_type, all_depth_slopes, all_depth)
                 write_to_file("Depth, m", "Torque Offset, N-m/radians", option, document_joint_type, Joint1Data, Joint2Data)
             elif (option == 2):
-                plotting_hysteresis(reader, joint_positions, joint_efforts, document_joint_type)	
+                plotting_hysteresis(reader, joint_positions, joint_efforts)	
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
-                # plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts)
                 # empty array elements
                 reset_joint_information(joint_efforts, joint_positions, joint_depth)
-            # elif (option == 3):
-                
+            elif (option == 3):
+                plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth)
+                write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
+                # empty array elements
+                reset_joint_information(joint_efforts, joint_positions, joint_depth)
 
-    if (option != 3):
-        Joint1Data.close()
-        Joint2Data.close()
-        if (option == 1):
-            Joint1TorqueOffsetSlope.close()
-            Joint2TorqueOffsetSlope.close()
-        # elif (option ==2):
-        #     Joint1BestFit.close()
-        #     Joint2BestFit.close()
+
+    Joint1Data.close()
+    Joint2Data.close()
+    if (option == 1):
+        Joint1TorqueOffsetSlope.close()
+        Joint2TorqueOffsetSlope.close()
 
 def plotting_torque_offset(reader, joint_efforts, joint_positions, joint_depth, all_depth_slopes, all_depth):
     
@@ -146,32 +144,55 @@ def plotting_torque_offset(reader, joint_efforts, joint_positions, joint_depth, 
         # reset arrays for each depth
         reset_joint_information(joint_efforts, joint_positions, joint_depth)
 
-# def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts):
-#     # process each depth
-#     for row in range(1, len(reader)): 
+def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth):
 
-#         # storing data into arrays       
-#         joint_positions.append(float(reader[row][2]))
-#         joint_efforts.append(float(reader[row][3]))
-        
-#     xaxis = numpy.arange(-0.07, 0.03, 0.15)
-#     A,B = numpy.polyfit(joint_positions, joint_efforts, 1)
-#     plt.plot(xaxis, (A*xaxis) + B, "x")
+    # get end index for one parallel data
+    end_index = 0
+    for row in range(1, len(reader)):
+        if (str(reader[row][0]) == "parallel"):
+            end_index = row 
+            break;
 
-def plotting_hysteresis(reader, joint_positions, joint_efforts, document_joint_type):
-    # process each depth
+    # plot one side parallel line and its best fit line
+    for row in range(1, end_index-1):
+        joint_positions.append(float(reader[row][2]))
+        joint_efforts.append(float(reader[row][3]))
+        plt.plot(joint_positions, joint_efforts, '-')
+
+    fit = numpy.polyfit(joint_positions, joint_efforts, 1)
+    fit_fn = numpy.poly1d(fit)
+    for i in range(0, 50): #(len(joint_positions)):
+        print joint_positions[i], "#####", fit_fn(joint_positions)[i]
+
+    plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '') 
+
+    reset_joint_information(joint_positions, joint_efforts, joint_depth)
+    print "\n"
+    
+    # plot the other side parallel line and its best fit line
+    for row in range(end_index + 1, len(reader)):
+        joint_positions.append(float(reader[row][2]))
+        joint_efforts.append(float(reader[row][3]))
+        plt.plot(joint_positions, joint_efforts, '-')
+
+    fit = numpy.polyfit(joint_positions, joint_efforts, 1)
+    fit_fn = numpy.poly1d(fit)
+
+    for i in range(0, 50): #(len(joint_positions)):
+        print joint_positions[i], "#####", fit_fn(joint_positions)[i]
+
+    # print len(joint_positions)
+    # print len(fit_fn(joint_positions))
+    plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '') 
+            
+def plotting_hysteresis(reader, joint_positions, joint_efforts):
+
     for row in range(1, len(reader)): 
-
         # storing data into arrays       
         joint_positions.append(float(reader[row][2]))
         joint_efforts.append(float(reader[row][3]))
 
         plt.plot(joint_positions, joint_efforts, '-')    
-
-    fit = numpy.polyfit(joint_positions, joint_efforts, 1)
-    fit_fn = numpy.poly1d(fit)
-
-    plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '')
 
 def plotting_slope(document_joint_type, all_depth_slopes, all_depth):
     if (document_joint_type == 0):
@@ -210,6 +231,6 @@ def write_to_file(x_label, y_label,option,document_joint_type, Joint1Data, Joint
     plt.show()
 
 #main()
-option = int(input("Enter:\n[1] for plotting torque offsets \n[2] for plotting hyteresis\n[3] generate backlash best line fit\n"))
+option = int(input("Enter:\n[1] for plotting torque offsets \n[2] for plotting hyteresis\n[3] generate hysteresis best fit line\n"))
 run(option)
 
