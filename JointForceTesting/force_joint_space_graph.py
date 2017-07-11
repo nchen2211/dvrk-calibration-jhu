@@ -189,13 +189,13 @@ def calculate_backlash(m1,m2,b1,b2, document_joint_type):
     backlash_array = []
     y_array = []
     count = 0
-    while (y < 0.31):
+    while (y < 0.310):
         position_one = (y - b1)/m1
         position_two = (y - b2)/m2
         y_array.append(y)
         backlash_array.append((abs(abs(position_one) - (abs(position_two)))))
         backlash += (abs(abs(position_one) - (abs(position_two))))
-        y += 0.1
+        y += 0.01
         count += 1
 
     outputFile = write_backlash_to_file(y_array, backlash_array, document_joint_type)
