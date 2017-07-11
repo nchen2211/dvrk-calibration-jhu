@@ -100,7 +100,7 @@ def run(option):
                 # empty array elements
                 reset_joint_information(joint_efforts, joint_positions, joint_depth)
             elif (option == 3):
-                plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth)
+                plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth, document_joint_type)
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
                 # empty array elements
                 reset_joint_information(joint_efforts, joint_positions, joint_depth)
@@ -144,10 +144,11 @@ def plotting_torque_offset(reader, joint_efforts, joint_positions, joint_depth, 
         # reset arrays for each depth
         reset_joint_information(joint_efforts, joint_positions, joint_depth)
 
-def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth):
+def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth, document_joint_type):
 
     # get end index for one parallel data
     end_index = 0
+
     for row in range(1, len(reader)):
         if (str(reader[row][0]) == "parallel"):
             end_index = row 
@@ -160,14 +161,12 @@ def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, jo
         plt.plot(joint_positions, joint_efforts, '-')
 
     fit = numpy.polyfit(joint_positions, joint_efforts, 1)
+    m1, b1 = fit
     fit_fn = numpy.poly1d(fit)
-    for i in range(0, 50): #(len(joint_positions)):
-        print joint_positions[i], "#####", fit_fn(joint_positions)[i]
 
     plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '') 
 
     reset_joint_information(joint_positions, joint_efforts, joint_depth)
-    print "\n"
     
     # plot the other side parallel line and its best fit line
     for row in range(end_index + 1, len(reader)):
@@ -176,15 +175,51 @@ def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, jo
         plt.plot(joint_positions, joint_efforts, '-')
 
     fit = numpy.polyfit(joint_positions, joint_efforts, 1)
+    m2, b2 = fit
     fit_fn = numpy.poly1d(fit)
-
-    for i in range(0, 50): #(len(joint_positions)):
-        print joint_positions[i], "#####", fit_fn(joint_positions)[i]
-
-    # print len(joint_positions)
-    # print len(fit_fn(joint_positions))
     plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '') 
-            
+    
+    avg_backlash = calculate_backlash(m1,m2,b1,b2, document_joint_type)
+    print "backlash", avg_backlash
+
+def calculate_backlash(m1,m2,b1,b2, document_joint_type):
+
+    y = -0.31
+    backlash = 0.0
+    backlash_array = []
+    y_array = []
+    count = 0
+    while (y < 0.31):
+        position_one = (y - b1)/m1
+        position_two = (y - b2)/m2
+        y_array.append(y)
+        backlash_array.append((abs(abs(position_one) - (abs(position_two)))))
+        backlash += (abs(abs(position_one) - (abs(position_two))))
+        y += 0.1
+        count += 1
+
+    outputFile = write_backlash_to_file(y_array, backlash_array, document_joint_type)
+    avg_backlash = backlash / count
+    print "\n Values will be saved in:", outputFile
+
+    return avg_backlash
+
+# generate an output file
+def write_backlash_to_file(y_array, backlash_array, document_joint_type):
+
+    outputFile = 'ForceTestingDataJointSpace/backlash_joint_' + str(document_joint_type) + '_' + 'best_fit_line_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
+   
+    f = open(outputFile, 'wb') # wb is used in python to write on file (write binary)
+    writer = csv.writer(f)
+    writer.writerow(["index", "joint effort", "position difference"])
+
+    for row in range(len(backlash_array)):
+        writer.writerow([row,
+            y_array[row],
+            backlash_array[row]])
+
+    return outputFile
+
 def plotting_hysteresis(reader, joint_positions, joint_efforts):
 
     for row in range(1, len(reader)): 
