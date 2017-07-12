@@ -115,7 +115,6 @@ def run(option):
 def plotting_torque_offset(reader, joint_efforts, joint_positions, joint_depth, all_depth_slopes, all_depth):
     
     for depth_index in range(CONST_NUM_DEPTH): 
-        # print "depth", depth_index
         startIndex = -1
         endIndex = -1
 
@@ -189,25 +188,33 @@ def calculate_backlash(m1,m2,b1,b2, document_joint_type):
     backlash_array = []
     y_array = []
     count = 0
-    while (y < 0.310):
+    while (y <= 0.31):
         position_one = (y - b1)/m1
         position_two = (y - b2)/m2
         y_array.append(y)
-        backlash_array.append((abs(abs(position_one) - (abs(position_two)))))
-        backlash += (abs(abs(position_one) - (abs(position_two))))
-        y += 0.01
+        backlash_array.append(abs(position_one - position_two))
+        backlash += (abs(position_one - position_two))
+        y += 0.001
+
         count += 1
+
+    position_one = (0.00 - b1)/m1
+    position_two = (0.00 - b2)/m2
+    y_array.append(0.00)
+    backlash_array.append(abs(position_one - position_two))
+
+    print "\nJoint",  document_joint_type, "position difference at 0 =", backlash_array[-1]
 
     outputFile = write_backlash_to_file(y_array, backlash_array, document_joint_type)
     avg_backlash = backlash / count
-    print "\n Values will be saved in:", outputFile
+    print "Backlash values will be saved in:", outputFile
 
     return avg_backlash
 
 # generate an output file
 def write_backlash_to_file(y_array, backlash_array, document_joint_type):
 
-    outputFile = 'ForceTestingDataJointSpace/backlash_joint_' + str(document_joint_type) + '_' + 'best_fit_line_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
+    outputFile = 'ForceTestingDataJointSpace/backlash_joint_' + str(document_joint_type) + '_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
    
     f = open(outputFile, 'wb') # wb is used in python to write on file (write binary)
     writer = csv.writer(f)
@@ -266,6 +273,6 @@ def write_to_file(x_label, y_label,option,document_joint_type, Joint1Data, Joint
     plt.show()
 
 #main()
-option = int(input("Enter:\n[1] for plotting torque offsets \n[2] for plotting hyteresis\n[3] generate hysteresis best fit line\n"))
+option = int(input("Enter:\n[1] for plotting torque offsets \n[2] for plotting hyteresis\n[3] generate hysteresis and backlash\n"))
 run(option)
 
