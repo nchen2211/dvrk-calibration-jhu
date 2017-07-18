@@ -56,7 +56,7 @@ protected:
 
 public:
 	compensation(const std::string & componentName, double periodInSecond);
-	~compensation();
+	~compensation(){};
 
 	// pure virtual methods in mtsTask
 	void Configure(const std::string & filename =""); // to parse JSON file

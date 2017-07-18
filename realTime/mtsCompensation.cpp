@@ -44,7 +44,7 @@ mstCompensation::mstCompensation(const std::string & componentName, double perio
     JointState = GetJointState();
 }
 
-void mstCompensation::setupInterfaces(){
+void mstCompensation::setupInterfaces(void){
 
     // add provided interfaces
     mtsInterfaceProvided * interfaceProvided = AddInterfaceProvided("PSM-RO");
@@ -168,4 +168,19 @@ void mtsCompensation::setCorrectedPosition() {
 
 prmStateJoint mtsCompensation::getCorrectedJointState() const {
     return CorrectedJointState;
+}
+
+void mtsCompensation::Startup(void){
+    /*
+    instantiate JointState from PID
+    instantiate double member var to 0.0
+    */
+
+}
+
+void mtsCompensation::Run(void){
+
+    // Ask Anton if we need ProcessQueuedCommands() 
+    ProcessQueuedCommands();
+    setCorrectedPosition();
 }
