@@ -204,10 +204,10 @@ def run(option):
                 get_data_file(data_files, document)
         elif (option == 4):
             #process the file first, save it as compliance_output_joint_x
-            if (not hasProcessed):
-                hasProcessed = process_compliance_data()
+            # if (not hasProcessed):
+            #     hasProcessed = process_compliance_data()
 
-            if (document.startswith("compliance_processed") and hasProcessed):
+            if (document.startswith("compliance_processed")):# and hasProcessed):
                 # Joint1Data = create_data_files("Hysteresis", "1")
                 # Joint2Data = create_data_files("Hysteresis", "2")
                 Joint1Slope = create_data_files("StiffnessSlope", "1") 
@@ -264,13 +264,7 @@ def run(option):
         Joint1Slope.close()
         Joint2Slope.close()
 
-        # Yes, it is hard to visualize the data this way.  
-        # It would probably be better to show the effort vs. position data 
-        # for one depth (which you already have) = done
-        # and then to have another plot of the slope vs. depth. = done  
-        # You can also plot backlash vs. depth, which we expect to be constant.
-
-def plotting_compliance(reader, joint_positions, joint_efforts, joint_depth, all_depth, all_depth_slopes, document_joint_type):
+def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, all_depth, all_depth_slopes, document_joint_type):
     for depth_index in range (CONST_NUM_DEPTH_COMPLIANCE):
         print "depth", depth_index
         startIndex = -1
@@ -382,7 +376,7 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
         all_depth.append(float(reader[startIndex][2]))
         print "depth:", all_depth[-1], " avg backlash:", all_depth_slopes[-1]
 
-    fit = numpy.polyfit(all_depth, all_depth_slopes, 1)
+    fit = numpy.polyfit(all_depth, all_depth_slopes, 2)
     fit_fn = numpy.poly1d(fit)
     plt.plot(all_depth, fit_fn(all_depth), '-')
     plt.plot(all_depth, all_depth_slopes, '.')
@@ -498,28 +492,66 @@ def plotting_slope(document_joint_type, all_depth_slopes, all_depth):
 
 def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint_efforts, joint_depth, all_depth_slopes, all_depth):
     
+    leftward_depth_slopes = []
+    rightward_depth_slopes = []
+
     for depth_index in range (CONST_NUM_DEPTH_COMPLIANCE):
-        print "depth", depth_index
         startIndex = -1
         endIndex = -1
+        leftStart =0
+        leftEnd = 0
+        rightStart = 0
+        rightEnd = 0
 
         # determine first and end index for each depth
         startIndex, endIndex = get_first_last_index(reader, depth_index, startIndex, endIndex, 1)
-        for row in range(startIndex, endIndex):
+        
+        leftStart = startIndex - 1
+        rightEnd = endIndex - 1
+        prev = -1
+        for row in range(startIndex, endIndex + 1):
+            curr = int(reader[row][0])
             joint_positions.append(float(reader[row][3]))
             joint_efforts.append(float(reader[row][4]))
 
-        slope, offset = numpy.polyfit(joint_positions, joint_efforts, 1)
-        print "first m",depth_index,"=", slope, "b",depth_index,"=", offset
+            if (prev == curr and prev != 0):
+                leftEnd = row - 2
+                rightStart = row - 1
+
+            prev = (int(reader[row][0]))
+
+        slope, offset = numpy.polyfit(joint_positions[startIndex-1:endIndex-1], joint_efforts[startIndex-1:endIndex-1], 1)
+        left_slope, offset = numpy.polyfit(joint_positions[leftStart:leftEnd],joint_efforts[leftStart:leftEnd], 1)
+        right_slope, offset = numpy.polyfit(joint_positions[rightStart:rightEnd], joint_efforts[rightStart:rightEnd] ,1) 
+
         all_depth_slopes.append(slope)
+        leftward_depth_slopes.append(left_slope)
+        rightward_depth_slopes.append(right_slope)
         all_depth.append(float(reader[startIndex][2]))
+
 
     xaxis = numpy.arange(0.08, 0.23, 0.005)
     A,B,C,D = numpy.polyfit(all_depth, all_depth_slopes, 3)
-    plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-')
-    print "############ slope ###############################"
+    plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "all data")
+    print  "all data slope"
     print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
+    
+    xaxis = numpy.arange(0.08, 0.23, 0.005)
+    A,B,C,D = numpy.polyfit(all_depth, leftward_depth_slopes, 3)
+    plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "leftward direction")
+    print "left data slope"
+    print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
+
+    xaxis = numpy.arange(0.08, 0.23, 0.005)
+    A,B,C,D = numpy.polyfit(all_depth, rightward_depth_slopes, 3)
+    plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "rightward direction")
+    print "right data slope"
+    print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
+    # print "##########################################################"
+
     plt.plot(all_depth, all_depth_slopes, '.')
+    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+           ncol=5, mode="expand", borderaxespad=0.)
 
     reset_slope(all_depth, all_depth_slopes)
 
