@@ -67,7 +67,7 @@ def process_compliance_data():
     complianceRawFiles = []
     # find csv files
     for document in os.listdir("ForceTestingDataJointSpace"):
-        if (document.startswith("compliance_raw")):
+        if (document.startswith("hysteresis_output")):
             if ('joint_0' in document):
                 complianceRawFiles.insert(0,document)
             elif ('joint_1' in document):
@@ -128,9 +128,9 @@ def process_compliance_data():
 
         # writing on a new csv files
         if (document_index == 0):
-            complianceProcessedFile = 'ForceTestingDataJointSpace/compliance_processed_joint_0_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
+            complianceProcessedFile = 'ForceTestingDataJointSpace/hysteresis_processed_joint_0_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
         elif (document_index == 1):
-            complianceProcessedFile = 'ForceTestingDataJointSpace/compliance_processed_joint_1_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
+            complianceProcessedFile = 'ForceTestingDataJointSpace/hysteresis_processed_joint_1_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv'
 
         print "\n Compliance processed data will be saved in:", complianceProcessedFile
         f = open(complianceProcessedFile, 'wb') # wb is used in python to write on file (write binary)
@@ -211,7 +211,7 @@ def run(option):
                 Joint2Data = create_data_files("Hysteresis", "2")
                 get_data_file(data_files, document)
         elif (option == 3):
-            if document.startswith("hysteresis_best_line"): # for calculating backlash
+            if document.startswith("hysteresis_processed"): 
                 Joint1Data = create_data_files("Hysteresis_best_fit", "1")
                 Joint2Data = create_data_files("Hysteresis_best_fit", "2")
                 get_data_file(data_files, document)
@@ -220,14 +220,14 @@ def run(option):
             # if (not hasProcessed):
             #     hasProcessed = process_compliance_data()
 
-            if (document.startswith("compliance_processed")):# and hasProcessed):
+            if (document.startswith("hysteresis_processed")):# and hasProcessed):
                 # Joint1Data = create_data_files("Hysteresis", "1")
                 # Joint2Data = create_data_files("Hysteresis", "2")
                 Joint1Slope = create_data_files("StiffnessSlope", "1") 
                 Joint2Slope = create_data_files("StiffnessSlope", "2")
                 get_data_file(data_files, document) 
         elif (option == 5):
-            if (document.startswith("compliance_processed")):
+            if (document.startswith("hysteresis_processed")):
                 # Joint1Data = create_data_files("Backlash", "1")
                 # Joint2Data = create_data_files("Backlash", "2")
                 Joint1Slope = create_data_files("BacklashSlope", "1") 
@@ -401,43 +401,54 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
 
 def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth, document_joint_type):
 
-    # get end index for one parallel data
-    end_index = 0
+    depth_index = 0 # arbitrary height from the file
+    startIndex = -1
+    endIndex = -1
 
-    for row in range(1, len(reader)):
-        if (str(reader[row][0]) == "parallel"):
-            end_index = row 
-            break;
+    all_positions = []
+    all_efforts = []
+    # determine first and end index for each depth
+    startIndex, endIndex = get_first_last_index(reader, depth_index, startIndex, endIndex, 1)
 
-    # plot one side parallel line and its best fit line
-    for row in range(1, end_index-1):
-        joint_positions.append(float(reader[row][2]))
-        joint_efforts.append(float(reader[row][3]))
-        plt.plot(joint_positions, joint_efforts, '-')
+    prevIndex = -1
+    endDirectionIndex = 0
+    for row in range(endIndex):
+        curr = reader[row][0]
+        if (prevIndex == curr):
+            endDirectionIndex = row - 1
+            break
+        prevIndex = curr
+
+    # get all positions and all efforts for plotting hysteresis      
+    for row in range(endIndex, startIndex-1, -1):
+        all_positions.append(float(reader[row][3]))
+        all_efforts.append(float(reader[row][4]))
+
+    # reverse back to normal order
+    all_positions.reverse() 
+    all_efforts.reverse() 
+
+    plt.plot(all_positions, all_efforts, '-', label = "hysteresis")
+
+    # one direction
+    for row in range(1, endDirectionIndex):
+        joint_positions.append(float(reader[row][3]))
+        joint_efforts.append(float(reader[row][4]))
 
     fit = numpy.polyfit(joint_positions, joint_efforts, 1)
-    m1, b1 = fit
-    print "m1=", m1, " b1=", b1
     fit_fn = numpy.poly1d(fit)
-
-    plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '') 
-
+    plt.plot(joint_positions, fit_fn(joint_positions), '', label = "leftward motion") 
     reset_joint_information(joint_positions, joint_efforts, joint_depth)
-    
-    # plot the other side parallel line and its best fit line
-    for row in range(end_index + 1, len(reader)):
-        joint_positions.append(float(reader[row][2]))
-        joint_efforts.append(float(reader[row][3]))
-        plt.plot(joint_positions, joint_efforts, '-')
+
+    # other direction
+    for row in range(endDirectionIndex + 1, endIndex):
+        joint_positions.append(float(reader[row][3]))
+        joint_efforts.append(float(reader[row][4]))
 
     fit = numpy.polyfit(joint_positions, joint_efforts, 1)
-    m2, b2 = fit
-    print "m2=", m2, " b2=", b2
     fit_fn = numpy.poly1d(fit)
-    plt.plot(joint_positions, joint_efforts, '', joint_positions, fit_fn(joint_positions), '') 
-    
-    avg_backlash = calculate_backlash(m1,m2,b1,b2, document_joint_type)
-    print "backlash", avg_backlash
+    plt.plot(joint_positions, fit_fn(joint_positions), '', label = "rightward motion") 
+    reset_joint_information(joint_positions, joint_efforts, joint_depth)
 
 def calculate_backlash(m1,m2,b1,b2, depth_index, backlash_array, y_array, depth_index_array):
 
@@ -542,7 +553,7 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
             joint_positions_leftward.append(joint_positions[row])
             joint_efforts_leftward.append(joint_efforts[row])
 
-
+        # store rightward direction joint information
         for row in range(rightStart, rightEnd):
             joint_positions_rightward.append(joint_positions[row])
             joint_efforts_rightward.append(joint_efforts[row])
@@ -562,7 +573,7 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
     xaxis = numpy.arange(0.08, 0.23, 0.005)
     A,B,C,D = numpy.polyfit(all_depth, all_depth_slopes, 3)
     plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "all data")
-    print  "all data slope"
+    print  "\nall data slope"
     print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
     plt.plot(all_depth, all_depth_slopes, '.')
     
@@ -599,7 +610,7 @@ def write_to_file(x_label, y_label,option,document_joint_type, Data1, Data2):
     plt.xlabel(x_label, size=18)
     plt.ylabel(y_label, size=18)
 
-    if (option == 1 or option == 4):
+    if (option == 1 or option == 4 or option == 3):
         plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=5, mode="expand", borderaxespad=0.)
 
