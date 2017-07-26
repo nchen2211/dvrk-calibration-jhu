@@ -44,11 +44,6 @@ class backlash:
     CONST_NEG_DIRECTION = -1
     CONST_DX = 0.00025 #0.000025
 
-    # for torque offset 
-    CONST_MIN_TO = math.radians(-5.0)
-    CONST_MAX_TO = math.radians(5.0)
-    CONST_DEGREE_INCREMENT = math.radians(0.16)
-
     robot_arm = robot()
     robot_arm_list = []
 
