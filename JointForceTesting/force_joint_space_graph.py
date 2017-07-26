@@ -62,6 +62,17 @@ def create_data_files(filename, currentJoint):
     JointData = PdfPages(("Joint" + currentJoint + "_" + filename + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) +'.pdf'))
     return JointData
 
+def store_joint_information(robotInfo, tempData, i, j):
+    j_pos_index = tempData[i].pos_index[j]
+    j_depth_index = tempData[i].depth_index[j]
+    j_depth = tempData[i].joint_depth[j]
+    j_position = tempData[i].joint_position[j]
+    j_effort = tempData[i].joint_effort[j]  
+    j_torque_offset = tempData[i].joint_torque_offset[j]        
+    robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
+    
+    return robotInfo
+
 def process_compliance_data():
 
     hysteresisRawFiles = []
@@ -106,26 +117,6 @@ def process_compliance_data():
             robotInfo.reverse_data()
             tempData.append(robotInfo)
 
-        # if (document_index == 0):
-        #     # arrange the data to plot 2 best-fit lines on each depth hysteresis
-        #     startIndex = 0
-        #     endIndex = []
-        #     prev = -1
-        #     for i in range(len(tempData)):
-        #         endIndex[:] = []
-        #         # get start index and end index
-        #         for j in range(len(tempData[i].joint_position)):
-        #             curr = tempData[i].pos_index[j] 
-                    
-        #             if(prev == curr):
-        #                 endIndex.append(j-1)
-        #             prev = curr
-
-        #         endIndex.append(len(tempData[i].joint_position) - 1)
-        #         # store the processed data in a list
-        #         separate_data(tempData, endIndex, i, processedDataList)
-        # elif (document_index == 1):
-            # get last index of first section of data
         endIndex = 0
         prev = -1
         for i in range(len(tempData)):
@@ -142,23 +133,25 @@ def process_compliance_data():
                 prev = curr
 
                 if (isFound): # the rest of the data
-                    j_pos_index = tempData[i].pos_index[j]
-                    j_depth_index = tempData[i].depth_index[j]
-                    j_depth = tempData[i].joint_depth[j]
-                    j_position = tempData[i].joint_position[j]
-                    j_effort = tempData[i].joint_effort[j]  
-                    j_torque_offset = tempData[i].joint_torque_offset[j]        
-                    robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
+                    # j_pos_index = tempData[i].pos_index[j]
+                    # j_depth_index = tempData[i].depth_index[j]
+                    # j_depth = tempData[i].joint_depth[j]
+                    # j_position = tempData[i].joint_position[j]
+                    # j_effort = tempData[i].joint_effort[j]  
+                    # j_torque_offset = tempData[i].joint_torque_offset[j]        
+                    # robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
+                    robotInfo = store_joint_information(robotInfo, tempData, i, j)
                     storeData.append(robotInfo)
                     # print storeData[-1].joint_position
                 else: 
-                    j_pos_index = tempData[i].pos_index[j]
-                    j_depth_index = tempData[i].depth_index[j]
-                    j_depth = tempData[i].joint_depth[j]
-                    j_position = tempData[i].joint_position[j]
-                    j_effort = tempData[i].joint_effort[j]  
-                    j_torque_offset = tempData[i].joint_torque_offset[j]        
-                    robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
+                    # j_pos_index = tempData[i].pos_index[j]
+                    # j_depth_index = tempData[i].depth_index[j]
+                    # j_depth = tempData[i].joint_depth[j]
+                    # j_position = tempData[i].joint_position[j]
+                    # j_effort = tempData[i].joint_effort[j]  
+                    # j_torque_offset = tempData[i].joint_torque_offset[j]      
+                     # robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
+                    robotInfo = store_joint_information(robotInfo, tempData, i, j)
                     temp.append(robotInfo)
                     # print temp[-1].joint_position
 
@@ -325,7 +318,7 @@ def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, all_
         # one direction
         for row in range(1, endDirectionIndex):
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4]))
+            joint_efforts.append(float(reader[row][4] - float(reader[row][5])))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         fit_fn = numpy.poly1d(fit)
@@ -335,7 +328,7 @@ def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, all_
         # other direction
         for row in range(endDirectionIndex + 1, endIndex):
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4]))
+            joint_efforts.append(float(reader[row][4] - float(reader[row][5])))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         fit_fn = numpy.poly1d(fit)
@@ -420,6 +413,8 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
     fit_fn = numpy.poly1d(fit)
     plt.plot(all_depth, fit_fn(all_depth), '-')
     plt.plot(all_depth, all_depth_slopes, '.')
+    x1, x2, y1, y2 = plt.axis()
+    plt.axis((x1,x2,0.0,0.1))
 
     reset_slope(all_depth, all_depth_slopes)
 
@@ -647,10 +642,13 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
     
     top_depth_slopes = []
     bottom_depth_slopes = []
+    one_direction_depth = []
     joint_positions_top = []
     joint_positions_bottom = []
     joint_efforts_top = []
     joint_efforts_bottom = []
+    all_positions = []
+    all_efforts = []
 
     for depth_index in range (CONST_NUM_DEPTH_COMPLIANCE):
         startIndex = -1
@@ -662,7 +660,7 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
 
         # determine first and end index for each depth
         startIndex, endIndex = get_first_last_index(reader, depth_index, startIndex, endIndex, 1)
-        print "startIndex", startIndex, " endIndex", endIndex
+        # print "startIndex", startIndex, " endIndex", endIndex
 
         topStart = startIndex - 1
         bottomEnd = endIndex - 1
@@ -670,43 +668,39 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
         for row in range(startIndex, endIndex + 1):
             curr = int(reader[row][0])
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4]))
+            joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
             if (prev == curr and prev != 0):
                 topEnd = row - 2
                 bottomStart = row - 1
             prev = curr
 
-        # for i in range(startIndex, endIndex):
-        #     print joint_positions[i], "____", joint_efforts[i]
-        # raw_input("enter")
-
-        print "top s", topStart, " top e", topEnd, " pos:", joint_positions[topStart], " ", joint_positions[topEnd]
-        print "bottom s", bottomStart, " bottom e", bottomEnd, " pos:", joint_positions[bottomStart], " ", joint_positions[bottomEnd]
-
-        # store top part of hysteresis topEnd
         for row in range(topStart, topEnd):
+            all_positions.append(joint_positions[row])
+            all_efforts.append(joint_efforts[row])
             joint_positions_top.append(joint_positions[row])
             joint_efforts_top.append(joint_efforts[row])
-       
-         # store bottom part of hysteresis graph
+
+        slope, offset = numpy.polyfit(all_positions, all_efforts, 1)
+        top_slope, offset = numpy.polyfit(joint_positions_top, joint_efforts_top, 1)
+        all_depth_slopes.append(slope)
+        top_depth_slopes.append(top_slope)
+        all_depth.append(float(reader[startIndex][2]))
+
         for row in range(bottomStart, bottomEnd):
+            all_positions.append(joint_positions[row])
+            all_efforts.append(joint_efforts[row])
             joint_positions_bottom.append(joint_positions[row])
             joint_efforts_bottom.append(joint_efforts[row])
 
-        slope, offset = numpy.polyfit(joint_positions, joint_efforts, 1)
-        left_slope, offset = numpy.polyfit(joint_positions_top, joint_efforts_top, 1)
-        right_slope, offset = numpy.polyfit(joint_positions_bottom, joint_efforts_bottom, 1)
-
+        slope, offset = numpy.polyfit(all_positions, all_efforts, 1)
+        bottom_slope, offset = numpy.polyfit(joint_positions_bottom, joint_efforts_bottom, 1)
         all_depth_slopes.append(slope)
-        top_depth_slopes.append(left_slope)
-        bottom_depth_slopes.append(right_slope)
-
+        bottom_depth_slopes.append(bottom_slope)
         all_depth.append(float(reader[startIndex][2]))
 
-        # raw_input("enter")
-
-    # print "all", joint_positions[0], "...", joint_positions[-1]
+        # below depth array is for all top slopes and all bottom slopes instead of all data
+        one_direction_depth.append(float(reader[startIndex][2]))
 
     if (document_joint_type == 0): 
         xaxis = numpy.arange(0.08, 0.23, 0.005)
@@ -714,49 +708,51 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "all data")
         print  "\nall data slope"
         print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        plt.plot(all_depth, all_depth_slopes, '.')
         
         xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(all_depth, top_depth_slopes, 3)
+        A,B,C,D = numpy.polyfit(one_direction_depth, top_depth_slopes, 3)
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "leftward direction")
         print "left data slope"
         print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        # plt.plot(all_depth, top_depth_slopes, '.')
+        # # plt.plot(all_depth, top_depth_slopes, '.')
 
         xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(all_depth, bottom_depth_slopes, 3)
+        A,B,C,D = numpy.polyfit(one_direction_depth, bottom_depth_slopes, 3)
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "rightward direction")
         print "right data slope"
         print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        # plt.plot(all_depth, bottom_depth_slopes, '.')
+        # # plt.plot(all_depth, bottom_depth_slopes, '.')
+
+        plt.plot(all_depth, all_depth_slopes, '.')
     elif (document_joint_type == 1): 
         xaxis = numpy.arange(0.08, 0.23, 0.005)
         A,B,C,D = numpy.polyfit(all_depth, all_depth_slopes, 3)
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "all data")
         print  "\nall data slope"
         print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        plt.plot(all_depth, all_depth_slopes, '.')
         
         xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(all_depth, top_depth_slopes, 3)
+        A,B,C,D = numpy.polyfit(one_direction_depth, top_depth_slopes, 3)
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "leftward direction")
         print "left data slope"
         print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        # plt.plot(all_depth, top_depth_slopes, '.')
+        # # plt.plot(all_depth, top_depth_slopes, '.')
 
         xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(all_depth, bottom_depth_slopes, 3)
+        A,B,C,D = numpy.polyfit(one_direction_depth, bottom_depth_slopes, 3)
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "rightward direction")
         print "right data slope"
         print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        # plt.plot(all_depth, bottom_depth_slopes, '.')
+        # # plt.plot(all_depth, bottom_depth_slopes, '.')
+
+        plt.plot(all_depth, all_depth_slopes, '.')
    
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=5, mode="expand", borderaxespad=0.)
 
     reset_slope(all_depth, all_depth_slopes)
-    reset_slope(all_depth, top_depth_slopes)
-    reset_slope(all_depth, bottom_depth_slopes)
+    reset_slope(one_direction_depth, top_depth_slopes)
+    reset_slope(one_direction_depth, bottom_depth_slopes)
     reset_joint_information(joint_efforts,joint_positions, joint_depth)
 
 def reset_joint_information(joint_efforts, joint_positions, joint_depth):
