@@ -30,6 +30,7 @@ class robot():
         self.depth_i = []
 
 class backlash:
+    CONST_JOINT_UNDER_TESTING = 1 # changable to 0 or 1 depending on which joint we want to test
     
     CONST_STARTING_DEPTH = -0.09
     CONST_TOTAL_SAMPLE = 20
@@ -44,9 +45,9 @@ class backlash:
     CONST_DX = 0.00025 #0.000025
 
     # for torque offset 
-    CONST_MIN = math.radians(-90.0)
-    CONST_MAX = math.radians(90.0)
-    CONST_DEGREE_INCREMENT = math.radians(5.0)
+    CONST_MIN_TO = math.radians(-5.0)
+    CONST_MAX_TO = math.radians(5.0)
+    CONST_DEGREE_INCREMENT = math.radians(0.16)
 
     robot_arm = robot()
     robot_arm_list = []
@@ -85,13 +86,22 @@ class backlash:
         time.sleep(.02)
 
      # reset all summation to zero
+    
     def reset_summation(self):
         self.robot_arm.current_joint_position = 0.0
         self.robot_arm.current_joint_effort = 0.0
         self.robot_arm.current_joint_torque_offset = 0.0
         self.robot_arm.joint_depth = 0.0
 
-    # get sum of current joint effort, position, and depth
+    def reset_average_values(self):
+
+        self.robot_arm.depth_i[:] = []
+        self.robot_arm.avg_depth[:] = []
+        self.robot_arm.avg_cur_joint_positions[:] = []
+        self.robot_arm.avg_cur_joint_efforts[:] = []
+        self.robot_arm.avg_cur_joint_torque_offset[:] = []
+
+   # get sum of current joint effort, position, and depth
     def get_joint_information(self, jointUnderTesting):
         self.robot_arm.current_joint_effort += self._robot.get_current_joint_effort()[jointUnderTesting]
         self.robot_arm.current_joint_position += self._robot.get_current_joint_position()[jointUnderTesting]
@@ -116,6 +126,7 @@ class backlash:
         print "\n"
 
      # set robot position depending on the joint under testing
+    
     def set_position(self, jointUnderTesting, pos_index, direction, depth):
         if jointUnderTesting == 0:
             print "move:", direction * self.CONST_DX * pos_index
@@ -124,7 +135,7 @@ class backlash:
             self._robot.move(PyKDL.Vector(0.0, (direction * self.CONST_DX * pos_index), depth))
 
     # generate an output file
-    def write_to_file(self, jointUnderTesting, direction, isHysteresis):
+    def write_to_file(self, jointUnderTesting, isHysteresis):
         if (isHysteresis):
             outputFile = 'ForceTestingDataJointSpace/hysteresis_output_joint_' + str(jointUnderTesting) + '_' + ('-'.join(str(x) for x in list(tuple(datetime.datetime.now().timetuple())[:6]))) + '.csv' 
         else:
@@ -152,10 +163,9 @@ class backlash:
                     self.robot_arm.avg_cur_joint_efforts[row],
                     self.robot_arm.avg_cur_joint_torque_offset[row]])
 
-    def collect_torque_offset(self, jointUnderTesting, direction):
-        # TODO
-
-    def collect_hysteresis(self, jointUnderTesting, direction, depth, depth_index, isClamped):
+        self.reset_average_values()
+                      
+    def collect_hysteresis(self, jointUnderTesting, direction, depth, depth_index):
 
         isMaxEffort = False
         avgEffort = 0.0
@@ -164,17 +174,10 @@ class backlash:
 
         self.reset_summation()
 
-        while (not isMaxEffort):#(i < 2):
+        while (not isMaxEffort): #(i < 2): 
             for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
-
-            # let the robot sit for 1 second before getting its torque offset
-            if (not isClamped):
-                time.sleep(0.5)
-                for sampleIndex in range(self.CONST_TOTAL_SAMPLE):
-                    self.robot_arm.current_joint_torque_offset += self._robot.get_current_joint_effort()[jointUnderTesting]
-                    time.sleep(.02)
 
             avgEffort = self.robot_arm.current_joint_effort / float(self.CONST_TOTAL_SAMPLE)
             print "avgEffort", avgEffort
@@ -221,13 +224,6 @@ class backlash:
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
 
-            # let the robot sit for 1/2 second before getting its torque offset
-            if (not isClamped):
-                time.sleep(0.5)
-                for sampleIndex in range(self.CONST_TOTAL_SAMPLE):
-                    self.robot_arm.current_joint_torque_offset += self._robot.get_current_joint_effort()[jointUnderTesting]
-                    time.sleep(.02)
-
             self.get_average_values(pos_index, depth_index)
             self.reset_summation()
             
@@ -243,7 +239,7 @@ class backlash:
 
             if (abs(increment) == 0.0):
                 is_pass_zero = True;
-                if (direction == self.CONST_NEG_DIRECTION):
+                if (direction == self.CONST_POS_DIRECTION):
                     for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                         self.get_joint_information(jointUnderTesting)
                         time.sleep(.02)
@@ -252,14 +248,15 @@ class backlash:
                     break;
 
             # below condition is to run the instrument pass initial position
-            if (direction == self.CONST_POS_DIRECTION and is_pass_zero):
+            if (direction == self.CONST_NEG_DIRECTION and is_pass_zero):
                 print "pass zero", pass_zero
                 if (pass_zero == 10):
                     break;
                 pass_zero += 1
                                      
     def run(self):
-        jointUnderTesting = 0; # changable to 0 or 1 depending on which joint we want to test
+        raw_input('do not forget to change direction in collect_data method, hit [enter]')
+        jointUnderTesting = self.CONST_JOINT_UNDER_TESTING; 
         self._robot.move_joint(numpy.array([0.0,0.0,0.1,0.0,0.0,0.0]))
 
         # check to see the third joint is working well
@@ -268,50 +265,36 @@ class backlash:
         raw_input("hit [enter] when the robot is able to move")
 
         depth = self.CONST_STARTING_DEPTH
+        self.reset_condition(jointUnderTesting, 0.0, depth)
+        time.sleep(2)
+
         self._robot.move(PyKDL.Vector(0.0, 0.0, depth))
-        time.sleep(3)
-        isHysteresis = False
-        
+        raw_input('when surface is in place, hit [enter]')
+        time.sleep(.3)
+        raw_input('when clamp is in place, hit [enter]')
+
+        firstDirection = 0
+        secondDirection = 0
+
+        if (jointUnderTesting == 0):
+            firstDirection = self.CONST_NEG_DIRECTION
+            secondDirection = self.CONST_POS_DIRECTION
+        elif (jointUnderTesting == 1):
+            firstDirection = self.CONST_POS_DIRECTION
+            secondDirection = self.CONST_NEG_DIRECTION
+
         while not rospy.is_shutdown():
+                    
             for depth_index in range(14):
+
                 print "depth:", depth, " depth index:", depth_index
                 # start collecting data
                 print "####### collecting data for joint", jointUnderTesting, " negative direction ######"
-                direction = self.CONST_NEG_DIRECTION
-                self.collect_hysteresis(jointUnderTesting, direction, depth, depth_index, False)
+                self.collect_hysteresis(jointUnderTesting, firstDirection, depth, depth_index)
                 time.sleep(2)
 
                 print "####### collecting data for joint", jointUnderTesting , " positive direction ######"
-                direction = self.CONST_POS_DIRECTION
-                self.collect_hysteresis(jointUnderTesting, direction, depth, depth_index, False)
-                isHysteresis = False
-                time.sleep(2)
-
-                # next depth
-                if (depth_index != 13):
-                    depth = -0.09 - (float(depth_index + 1) * 0.01)
-                    self._robot.move(PyKDL.Vector(0.0, 0.0, depth))              
-
-            # file output
-            self.write_to_file(jointUnderTesting, direction, isHysteresis)
-            depth = self.CONST_STARTING_DEPTH
-            self._robot.move(PyKDL.Vector(0.0, 0.0, depth))
-            time.sleep(3)
-            raw_input('when surface is in place, hit [enter]')
-            time.sleep(.3)
-            raw_input('when clamp is in place, hit [enter]')
-
-            for depth_index in range(14):
-                print "depth:", depth, " depth index:", depth_index
-                # start collecting data
-                print "####### collecting data for joint", jointUnderTesting, " negative direction ######"
-                direction = self.CONST_NEG_DIRECTION
-                self.collect_hysteresis(jointUnderTesting, direction, depth, depth_index, True)
-                time.sleep(2)
-
-                print "####### collecting data for joint", jointUnderTesting , " positive direction ######"
-                direction = self.CONST_POS_DIRECTION
-                self.collect_hysteresis(jointUnderTesting, direction, depth, depth_index, True)
+                self.collect_hysteresis(jointUnderTesting, secondDirection, depth, depth_index)
                 isHysteresis = True
                 time.sleep(2)
 
@@ -323,7 +306,7 @@ class backlash:
                     raw_input('clamp the instrument then hit [enter]');                
             
             # file output
-            self.write_to_file(jointUnderTesting, direction, isHysteresis)
+            self.write_to_file(jointUnderTesting, isHysteresis)
             rospy.signal_shutdown('Finished Task')
 
 #main()
