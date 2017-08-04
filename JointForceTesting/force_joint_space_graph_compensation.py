@@ -136,7 +136,7 @@ def write_to_file():
     joint_effort = []
     bag_files = []
 
-    target = "CorrectionData/Point_" + POINT + "/" + ANGLE + "/" + str(MAX_EFFORT) + "/"
+    target = "CorrectionData/JointDisplacementTest/Point_" + POINT + "/" + ANGLE + "/" + str(MAX_EFFORT) + "/"
     for document in os.listdir(target):
         if (document.startswith("_dvrk_PSM3_compensated_state_joint_current")):
             bag_files.append(document)
@@ -210,7 +210,7 @@ def graph_comparison():
 
     Joint1Comparison.close()
 
-option = int(input("Enter:\n[1] for plotting compensation comparison graph \n[2] for generating comparison file\n" + 
+option = int(input("Enter:\n[2] for plotting compensation comparison graph \n" + 
     "[3] for generating cartesian of plate distance\n"))
 if (option == 1):
     graph_comparison()

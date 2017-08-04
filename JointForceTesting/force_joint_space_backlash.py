@@ -112,14 +112,6 @@ class backlash:
         self.robot_arm.position_i.append(pos_index)
         self.robot_arm.depth_i.append(depth_index)
 
-        print "pos index", self.robot_arm.position_i[-1]
-        print "depth index", self.robot_arm.depth_i[-1]
-        print "average joint effort = ", self.robot_arm.avg_cur_joint_efforts[-1]
-        print "average joint torque offset =", self.robot_arm.avg_cur_joint_torque_offset[-1]
-        print "average joint position = ", self.robot_arm.avg_cur_joint_positions[-1]
-        print "average joint depth = ", self.robot_arm.avg_depth[-1]
-        print "\n"
-
      # set robot position depending on the joint under testing
     
     def set_position(self, jointUnderTesting, pos_index, direction, depth):
@@ -169,7 +161,7 @@ class backlash:
 
         self.reset_summation()
 
-        while (not isMaxEffort): #(i < 2): 
+        while (not isMaxEffort):
             for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
@@ -186,17 +178,7 @@ class backlash:
                 pos_index += 1 
                 self.set_position(jointUnderTesting, pos_index, direction, depth)
                 print "position recorded:", pos_index
-                time.sleep(.5)
-
-            # self.get_average_values(pos_index, depth_index)
-            # self.reset_summation()
-
-            # pos_index += 1 
-            # self.set_position(jointUnderTesting, pos_index, direction, depth)
-            # print "position recorded:", pos_index
-            # time.sleep(.5) 
-
-            # i += 1        
+                time.sleep(.5)      
         
         self.reset_summation()
         time.sleep(3)

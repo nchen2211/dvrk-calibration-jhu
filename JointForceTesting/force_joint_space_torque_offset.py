@@ -110,13 +110,6 @@ class torque_offsets:
         self.robot_arm.position_i.append(pos_index)
         self.robot_arm.depth_index.append(depth_index)
 
-        # print "pos index", self.robot_arm.position_i[-1]
-        # print "depth index", self.robot_arm.depth_index[-1]
-        # print "average joint effort = ", self.robot_arm.avg_cur_joint_efforts[-1]
-        print "average joint position =", self.robot_arm.avg_cur_joint_positions[-1]
-        # print "average joint depth = ", self.robot_arm.avg_depth[-1]
-        # print "\n"
-
     # measures the torque offsets on 5 different depth (8, 12, 16, 20, 24)
     def collect_large_range_torque_offset(self, jointUnderTesting):
         depthIndex = 0
@@ -160,11 +153,6 @@ class torque_offsets:
                     break;
 
     def collect_torque_offset_in_hysteresis(self, jointUnderTesting, direction, depth, depthIndex):
-        # joint 0: (-) left, (+) right
-        # joint 1: (-) out, (+) in
-
-        # change: depth loop, while loop condition, pass zero limit
-
         maxDegree = 0
         if (jointUnderTesting == 0):
             if (direction == self.CONST_NEG_DIRECTION): 
@@ -186,7 +174,7 @@ class torque_offsets:
         current_position = 0.0
         count = 0
 
-        while (not isMax): #(i < 5):
+        while (not isMax):
             for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
@@ -210,20 +198,7 @@ class torque_offsets:
                 print "position recorded:", position_index
                 time.sleep(.5)
                 count += 1
-                print "count", count
 
-            # self.get_average_values(position_index, depthIndex)
-            # self.reset_summation()
-
-            # position_index += 1 
-            # self.set_position(jointUnderTesting, current_position, depth)
-            # print "position recorded:", position_index
-            # time.sleep(.5) 
-
-            # i += 1
-            # count += 1 
-            # print "count", count 
- 
         self.reset_summation()
         time.sleep(3)
 
@@ -273,7 +248,6 @@ class torque_offsets:
             if (count == 0): 
                 is_pass_zero = True;
                 if (direction == self.CONST_NEG_DIRECTION):
-                    print "IN HERE"
                     for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                         self.get_joint_information(jointUnderTesting)
                         time.sleep(.02)
@@ -284,15 +258,12 @@ class torque_offsets:
      
             # below condition is to run the instrument pass initial position. It is executed 
             # on the second direction of data collection
-      
             if (direction == self.CONST_POS_DIRECTION and is_pass_zero):
-                print "pass zero", pass_zero
                 if (pass_zero == 10):
                     break;
                 pass_zero += 1
    
             count -= 1
-            print "count", count
 
     # generate an output file
     def write_to_file(self, jointUnderTesting, isSmall):

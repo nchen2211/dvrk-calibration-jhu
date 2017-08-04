@@ -85,6 +85,7 @@ def process_hysteresis_data():
                 hysteresisRawFiles.insert(1,document)
 
     for document_index in range(len(hysteresisRawFiles)):
+        print len(hysteresisRawFiles)
         current_file = (str(hysteresisRawFiles[document_index]))
         reader = list(csv.reader(open('ForceTestingDataJointSpace/' + current_file,"rb"), delimiter=','))    
 
@@ -218,23 +219,24 @@ def run(option):
                 Joint2Data = create_data_files("Hysteresis_best_fit", "2")
                 get_data_file(data_files, document)
         elif (option == 4):
+            if (hysteresisProcessedFile == 0):
+                hysteresisProcessedFile = process_hysteresis_data()
+        elif (option == 5):
             # process the file first, save it as hysteresis_processed_joint_x
-            # hysteresisProcessedFile = process_hysteresis_data()
-            
-            if (document.startswith("hysteresis_processed")):  #and hysteresisProcessedFile == 2):
+            if (doc.startswith("hysteresis_processed")):  #and hysteresisProcessedFile == 2):
                 Joint1Data = create_data_files("Stiffness", "1")
                 Joint2Data = create_data_files("Stiffness", "2")
                 Joint1Slope = create_data_files("StiffnessSlope", "1") 
                 Joint2Slope = create_data_files("StiffnessSlope", "2")
-                get_data_file(data_files, document) 
-        elif (option == 5):
+                get_data_file(data_files, doc) 
+                break;
+        elif (option == 6):
             if (document.startswith("hysteresis_processed")):
                 Joint1Slope = create_data_files("BacklashSlope", "1") 
                 Joint2Slope = create_data_files("BacklashSlope", "2") 
                 get_data_file(data_files, document) 
     
     for document_joint_type in range(len(data_files)):
-        print "reading document", document_joint_type
         # for graphing torque offset slope
         all_depth_slopes = []
         all_depth = [] 
@@ -260,25 +262,26 @@ def run(option):
             elif (option == 3):
                 plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth, document_joint_type)
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
-            elif (option == 4):
+            elif (option == 5):
                 plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, document_joint_type)
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
                 plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint_efforts, joint_depth, all_depth_slopes, all_depth)
                 write_to_file("Distance from RCM, m", "Stiffness, N-m/radians", option, document_joint_type, Joint1Slope, Joint2Slope)
-            elif (option == 5):
+            elif (option == 6):
                 plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth, all_depth, all_depth_slopes, document_joint_type)
                 write_to_file("Depth, m", "Backlash, radians", option, document_joint_type, Joint1Slope, Joint2Slope)
            
              # empty array elements
             reset_joint_information(joint_efforts, joint_positions, joint_depth)
 
-    if (option != 5): 
+    if (option != 4 and option != 6): 
         Joint1Data.close()
         Joint2Data.close()
 
-    if (option == 1 or option == 4 or option == 5):
-        Joint1Slope.close()
-        Joint2Slope.close()
+    if (option == 1 or option == 5 or option == 6):
+        if (hysteresisProcessedFile != 0):
+            Joint1Slope.close()
+            Joint2Slope.close()
 
 def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, document_joint_type):
     for depth_index in range (1,14):
@@ -646,6 +649,6 @@ def write_to_file(x_label, y_label,option,document_joint_type, Data1, Data2):
 
 #main()
 option = int(input("Enter:\n[1] for plotting torque offsets \n[2] for plotting hyteresis\n" +
-    "[3] for plotting hysteresis best-fit lines\n[4] for stiffness\n[5] for backlash slope\n"))
+    "[3] for plotting hysteresis best-fit lines\n[4] for generating hysteresis processed data\n[5] for plotting stiffness and its slope\n[6] for plotting backlash slope\n"))
 run(option)
 
