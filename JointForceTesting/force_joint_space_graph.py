@@ -16,7 +16,7 @@ import math
 import datetime
 
 CONST_NUM_DEPTH_TORQUE_OFFSET = 5
-CONST_NUM_DEPTH_COMPLIANCE = 14
+CONST_NUM_DEPTH_STIFFNESS = 14
 # hysteresis graph: joint 1 , mid -> bottom left -> top right
 #                   joint 2, mid -> top right -> bottom left
 
@@ -73,7 +73,7 @@ def store_joint_information(robotInfo, tempData, i, j):
     
     return robotInfo
 
-def process_compliance_data():
+def process_hysteresis_data():
 
     hysteresisRawFiles = []
     # find csv files
@@ -91,7 +91,7 @@ def process_compliance_data():
         tempData = []
         processedDataList = []
         # store joint information for each depth index
-        for depth_index in range(CONST_NUM_DEPTH_COMPLIANCE): 
+        for depth_index in range(CONST_NUM_DEPTH_STIFFNESS): 
             startIndex = -1
             endIndex = -1
 
@@ -133,27 +133,11 @@ def process_compliance_data():
                 prev = curr
 
                 if (isFound): # the rest of the data
-                    # j_pos_index = tempData[i].pos_index[j]
-                    # j_depth_index = tempData[i].depth_index[j]
-                    # j_depth = tempData[i].joint_depth[j]
-                    # j_position = tempData[i].joint_position[j]
-                    # j_effort = tempData[i].joint_effort[j]  
-                    # j_torque_offset = tempData[i].joint_torque_offset[j]        
-                    # robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
                     robotInfo = store_joint_information(robotInfo, tempData, i, j)
                     storeData.append(robotInfo)
-                    # print storeData[-1].joint_position
                 else: 
-                    # j_pos_index = tempData[i].pos_index[j]
-                    # j_depth_index = tempData[i].depth_index[j]
-                    # j_depth = tempData[i].joint_depth[j]
-                    # j_position = tempData[i].joint_position[j]
-                    # j_effort = tempData[i].joint_effort[j]  
-                    # j_torque_offset = tempData[i].joint_torque_offset[j]      
-                     # robotInfo.set_data(j_pos_index, j_depth_index, j_depth, j_position, j_effort, j_torque_offset)
                     robotInfo = store_joint_information(robotInfo, tempData, i, j)
                     temp.append(robotInfo)
-                    # print temp[-1].joint_position
 
             for i in range(len(storeData)):
                 robotInfo = robot_info()
@@ -164,8 +148,6 @@ def process_compliance_data():
                 robotInfo = robot_info()
                 robotInfo = temp[i]
                 processedDataList.append(robotInfo)
-
-            # raw_input("enter")
 
         # writing on a new csv files
         if (document_index == 0):
@@ -207,7 +189,7 @@ def get_first_last_index(reader, depth_index, startIndex, endIndex, col_on_file)
             if (depth_index == CONST_NUM_DEPTH_TORQUE_OFFSET - 1):
                 endIndex = (len(reader)) - 1;
         elif (col_on_file == 1):
-            if (depth_index == CONST_NUM_DEPTH_COMPLIANCE - 1):
+            if (depth_index == CONST_NUM_DEPTH_STIFFNESS - 1):
                 endIndex = (len(reader)) - 1;
 
     return startIndex, endIndex
@@ -236,13 +218,12 @@ def run(option):
                 Joint2Data = create_data_files("Hysteresis_best_fit", "2")
                 get_data_file(data_files, document)
         elif (option == 4):
-            #process the file first, save it as hysteresis_processed_joint_x
-            # if (hysteresisProcessedFile != 2):
-            # hysteresisProcessedFile = process_compliance_data()
-            # raw_input("enter")
-            #     print "hysteresisProcessedFile", hysteresisProcessedFile
-
+            # process the file first, save it as hysteresis_processed_joint_x
+            # hysteresisProcessedFile = process_hysteresis_data()
+            
             if (document.startswith("hysteresis_processed")):  #and hysteresisProcessedFile == 2):
+                Joint1Data = create_data_files("Stiffness", "1")
+                Joint2Data = create_data_files("Stiffness", "2")
                 Joint1Slope = create_data_files("StiffnessSlope", "1") 
                 Joint2Slope = create_data_files("StiffnessSlope", "2")
                 get_data_file(data_files, document) 
@@ -271,7 +252,7 @@ def run(option):
             if (option == 1):
                 plotting_torque_offset(reader, joint_efforts, joint_positions, joint_depth, all_depth_slopes, all_depth)
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
-                plotting_slope(document_joint_type, all_depth_slopes, all_depth)
+                plotting_slope(document_joint_type, all_depth, all_depth_slopes, option,'')
                 write_to_file("Depth, m", "Torque Offset, N-m/radians", option, document_joint_type, Joint1Data, Joint2Data)
             elif (option == 2):
                 plotting_hysteresis(reader, joint_positions, joint_efforts)	
@@ -280,16 +261,18 @@ def run(option):
                 plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth, document_joint_type)
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
             elif (option == 4):
+                plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, document_joint_type)
+                write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
                 plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint_efforts, joint_depth, all_depth_slopes, all_depth)
-                write_to_file("Distance from RCM, m", "Stiffness, radians/N-m", option, document_joint_type, Joint1Slope, Joint2Slope)
+                write_to_file("Distance from RCM, m", "Stiffness, N-m/radians", option, document_joint_type, Joint1Slope, Joint2Slope)
             elif (option == 5):
                 plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth, all_depth, all_depth_slopes, document_joint_type)
                 write_to_file("Depth, m", "Backlash, radians", option, document_joint_type, Joint1Slope, Joint2Slope)
-
+           
              # empty array elements
             reset_joint_information(joint_efforts, joint_positions, joint_depth)
 
-    if (option != 5 and option != 4): 
+    if (option != 5): 
         Joint1Data.close()
         Joint2Data.close()
 
@@ -297,9 +280,9 @@ def run(option):
         Joint1Slope.close()
         Joint2Slope.close()
 
-def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, all_depth, all_depth_slopes, document_joint_type):
-    for depth_index in range (CONST_NUM_DEPTH_COMPLIANCE):
-        print "depth", depth_index
+def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, document_joint_type):
+    for depth_index in range (1,14):
+
         startIndex = -1
         endIndex = -1
 
@@ -318,7 +301,7 @@ def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, all_
         # one direction
         for row in range(1, endDirectionIndex):
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4] - float(reader[row][5])))
+            joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         fit_fn = numpy.poly1d(fit)
@@ -328,7 +311,7 @@ def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, all_
         # other direction
         for row in range(endDirectionIndex + 1, endIndex):
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4] - float(reader[row][5])))
+            joint_efforts.append(float(reader[row][4]) - float(reader[row][5] ))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         fit_fn = numpy.poly1d(fit)
@@ -371,7 +354,7 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
     backlash_array = []
     y_array = []
     depth_index_array = []
-    for depth_index in range (CONST_NUM_DEPTH_COMPLIANCE):
+    for depth_index in range (CONST_NUM_DEPTH_STIFFNESS):
         startIndex = -1
         endIndex = -1
 
@@ -390,7 +373,7 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
         # one direction
         for row in range(1, endDirectionIndex):
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4]))
+            joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         m1, b1 = fit
@@ -399,7 +382,7 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
         # other direction
         for row in range(endDirectionIndex + 1, endIndex):
             joint_positions.append(float(reader[row][3]))
-            joint_efforts.append(float(reader[row][4]))
+            joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         m2, b2 = fit
@@ -407,7 +390,6 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
 
         all_depth_slopes.append(calculate_backlash(m1,m2,b1,b2, depth_index, backlash_array, y_array, depth_index_array))
         all_depth.append(float(reader[startIndex][2]))
-        print "depth:", all_depth[-1], " avg backlash:", all_depth_slopes[-1]
 
     fit = numpy.polyfit(all_depth, all_depth_slopes, 2)
     fit_fn = numpy.poly1d(fit)
@@ -416,6 +398,11 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
     x1, x2, y1, y2 = plt.axis()
     plt.axis((x1,x2,0.0,0.1))
 
+    sumBacklashVariation = 0.0
+    for i in range(len(all_depth_slopes)):
+        sumBacklashVariation += all_depth_slopes[i]
+
+    print "joint", document_joint_type, " backlash =", sumBacklashVariation / len(all_depth) 
     reset_slope(all_depth, all_depth_slopes)
 
     outputFile = write_backlash_to_file(y_array, backlash_array, depth_index_array, document_joint_type)
@@ -424,52 +411,55 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
 def plotting_hysteresis_best_line_fit(reader, joint_positions, joint_efforts, joint_depth, document_joint_type):
 
     depth_index = plotting_hysteresis(reader, joint_positions, joint_efforts)
+
     startIndex = -1
     endIndex = -1
+    topStart =0
+    topEnd = 0
+    bottomStart = 0
+    bottomEnd = 0
 
-    all_positions = []
-    all_efforts = []
     # determine first and end index for each depth
     startIndex, endIndex = get_first_last_index(reader, depth_index, startIndex, endIndex, 1)
 
-    prevIndex = -1
-    endDirectionIndex = 0
-    for row in range(endIndex):
-        curr = reader[row][0]
-        if (prevIndex == curr):
-            endDirectionIndex = row - 1
-            break
-        prevIndex = curr
+    topStart = startIndex - 1
+    bottomEnd = endIndex - 1
+    prev = -1
+    for row in range(startIndex, endIndex + 1):
+        curr = int(reader[row][0])
 
-    # get all positions and all efforts for plotting hysteresis      
-    # for row in range(endIndex, startIndex-1, -1):
-    #     all_positions.append(float(reader[row][3]))
-    #     all_efforts.append(float(reader[row][4]))
+        if (prev == curr and prev != 0):
+            topEnd = row - 2
+            bottomStart = row - 1
+        prev = curr
 
-    # # reverse back to normal order
-    # all_positions.reverse() 
-    # all_efforts.reverse() 
+    lineLabel1 = ""
+    lineLabel2 = ""
+    if (document_joint_type == 0):
+        lineLabel1 = "rightward direction"
+        lineLabel2 = "leftward direction"
+    elif (document_joint_type == 1):
+        lineLabel1 = "outward direction"
+        lineLabel2 = "inward direction"
 
-    # plt.plot(all_positions, all_efforts, '-', label = "hysteresis")
-
-    # one direction
-    for row in range(1, endDirectionIndex):
+            # one direction
+    for row in range(topStart, topEnd):
         joint_positions.append(float(reader[row][3]))
-        joint_efforts.append(float(reader[row][4]))
+        joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
     fit = numpy.polyfit(joint_positions, joint_efforts, 1)
     fit_fn = numpy.poly1d(fit)
-    plt.plot(joint_positions, fit_fn(joint_positions), '', label = "leftward motion") 
+    plt.plot(joint_positions, fit_fn(joint_positions), '', label = lineLabel1, linewidth = 2) 
     reset_joint_information(joint_positions, joint_efforts, joint_depth)
 
     # other direction
-    for row in range(endDirectionIndex + 1, endIndex):
+    for row in range(bottomStart, bottomEnd):
         joint_positions.append(float(reader[row][3]))
-        joint_efforts.append(float(reader[row][4]))
+        joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
     fit = numpy.polyfit(joint_positions, joint_efforts, 1)
     fit_fn = numpy.poly1d(fit)
-    plt.plot(joint_positions, fit_fn(joint_positions), '', label = "rightward motion") 
+    plt.plot(joint_positions, fit_fn(joint_positions), '', label = lineLabel2, linewidth = 2) 
     reset_joint_information(joint_positions, joint_efforts, joint_depth)
 
 def calculate_backlash(m1,m2,b1,b2, depth_index, backlash_array, y_array, depth_index_array):
@@ -516,7 +506,7 @@ def write_backlash_to_file(y_array, backlash_array, depth_index_array, document_
 
 def plotting_hysteresis(reader, joint_positions, joint_efforts):
 
-    depth_desired = 3
+    depth_desired = 5
     startIndex = -1
     endIndex = -1
     # determine first and end index for one depth
@@ -525,28 +515,36 @@ def plotting_hysteresis(reader, joint_positions, joint_efforts):
     for row in range(startIndex, endIndex): 
         # storing data into arrays       
         joint_positions.append(float(reader[row][3]))
-        joint_efforts.append(float(reader[row][4]))
+        joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
-        plt.plot(joint_positions, joint_efforts, '-', label = "hysteresis")    
-
+    plt.plot(joint_positions, joint_efforts, '.', label = "hysteresis", linewidth = 3)    
     return depth_desired
 
-def plotting_slope(document_joint_type, all_depth_slopes, all_depth):
-    if (document_joint_type == 0):
-        xaxis = numpy.arange(0.0, 0.7, 0.15)
-        A,B = numpy.polyfit(all_depth, all_depth_slopes, 1)
-        plt.plot(xaxis, ((A*xaxis) + B), '-')
-    elif (document_joint_type == 1):
-        xaxis = numpy.arange(0.0, 0.4, 0.15)
-        A,B,C = numpy.polyfit(all_depth, all_depth_slopes, 2)
-        plt.plot(xaxis, ((A*(xaxis**2)) + (B*xaxis) + C), '-')
+def plotting_slope(document_joint_type, allDepths, allSlopes, option, plotLabel):
+    if (option == 1):
+        if (document_joint_type == 0):
+            xaxis = numpy.arange(0.0, 0.7, 0.15)
+            A,B = numpy.polyfit(allDepths, allSlopes, 1)
+            plt.plot(xaxis, ((A*xaxis) + B), '-')
+        elif (document_joint_type == 1):
+            xaxis = numpy.arange(0.0, 0.4, 0.15)
+            A,B = numpy.polyfit(allDepths, allSlopes, 1)
+            plt.plot(xaxis, ((A*xaxis) + B), '-')
 
-    plt.plot(all_depth, all_depth_slopes, '.')
-    reset_slope(all_depth, all_depth_slopes)
+        plt.plot(allDepths, allSlopes, '.')
+        x1, x2, y1, y2 = plt.axis()
+        plt.axis((x1,0.3,0.0,0.3))
+    elif (option == 4):
+        xaxis = numpy.arange(0.08, 0.23, 0.005)
+        A,B,C,D = numpy.polyfit(allDepths, allSlopes, 3)
+        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = plotLabel)
+        if (plotLabel == "all data"):
+            print  "\nall data slope"
+            print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
+        plt.plot(allDepths, allSlopes, '.')
 
 def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint_efforts, joint_depth, all_depth_slopes, all_depth):
-    
-    print "###################################################"
+
     top_depth_slopes = []
     bottom_depth_slopes = []
     joint_positions_top = []
@@ -556,7 +554,7 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
     top_depth = []
     bottom_depth = []
 
-    for depth_index in range (CONST_NUM_DEPTH_COMPLIANCE):
+    for depth_index in range (CONST_NUM_DEPTH_STIFFNESS):
         startIndex = -1
         endIndex = -1
         topStart =0
@@ -604,60 +602,20 @@ def plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint
         allSlopes.append(top_depth_slopes[i])
         allDepths.append(top_depth[i])
 
-    print "\n"
     for i in range(len(bottom_depth_slopes)):
         allSlopes.append(bottom_depth_slopes[i])
         allDepths.append(bottom_depth[i])
 
-    for i in range(len(allSlopes)):
-        if (i == 14):
-            print "\n"
-        print "slope:",allSlopes[i], " depth:", allDepths[i] 
-
-    if (document_joint_type == 0): 
-        xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(allDepths, allSlopes, 3)
-        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "all data")
-        print  "\nall data slope"
-        print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        
-        xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(allDepths[0:13], allSlopes[0:13], 3)
-        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "rightward direction")
-        print "left data slope"
-        print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-
-        xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(allDepths[14:28], allSlopes[14:28], 3)
-        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "leftward direction")
-        print "right data slope"
-        print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-
-
-        plt.plot(allDepths, allSlopes, '.')
+    if (document_joint_type == 0):
+        plotting_slope(document_joint_type, allDepths, allSlopes, option, "all data")
+        plotting_slope(document_joint_type, allDepths[0:13], allSlopes[0:13], option, "rightward data")
+        plotting_slope(document_joint_type, allDepths[14:28], allSlopes[14:28], option, "leftward data")
     elif (document_joint_type == 1): 
-        xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(allDepths, allSlopes, 3)
-        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "all data")
-        print  "\nall data slope"
-        print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-        
-        xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(allDepths[0:14], allSlopes[0:14], 3)
-        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "outward direction")
-        print "left data slope"
-        print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-
-        xaxis = numpy.arange(0.08, 0.23, 0.005)
-        A,B,C,D = numpy.polyfit(allDepths[14:28], allSlopes[14:28], 3)
-        plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = "inward direction")
-        print "right data slope"
-        print "A =", A, "\nB =", B, "\nC =", C, "\nD =",D
-
-        plt.plot(allDepths, allSlopes, '.')
+        plotting_slope(document_joint_type, allDepths, allSlopes, option, "all data")
+        plotting_slope(document_joint_type, allDepths[0:13], allSlopes[0:13], option, "outward data")
+        plotting_slope(document_joint_type, allDepths[14:28], allSlopes[14:28], option, "inward data")
    
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-           ncol=5, mode="expand", borderaxespad=0.)
+    plt.legend(bbox_to_anchor = (1.0, 0.35))
 
     reset_slope(allDepths, allSlopes)
     reset_slope(top_depth, top_depth_slopes)
@@ -678,8 +636,7 @@ def write_to_file(x_label, y_label,option,document_joint_type, Data1, Data2):
     plt.ylabel(y_label, size=18)
 
     if (option == 1 or option == 4 or option == 3):
-        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
-           ncol=5, mode="expand", borderaxespad=0.)
+        plt.legend(bbox_to_anchor = (1.0, 1.0), fontsize = 8)
 
     if (document_joint_type == 0):
         plt.savefig(Data1, format = 'pdf')
@@ -689,6 +646,6 @@ def write_to_file(x_label, y_label,option,document_joint_type, Data1, Data2):
 
 #main()
 option = int(input("Enter:\n[1] for plotting torque offsets \n[2] for plotting hyteresis\n" +
-    "[3] for plotting hysteresis best-fit lines\n[4] for stiffness slope\n[5] for backlash slope\n"))
+    "[3] for plotting hysteresis best-fit lines\n[4] for stiffness\n[5] for backlash slope\n"))
 run(option)
 

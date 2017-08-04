@@ -34,15 +34,15 @@ class torque_offsets:
     CONST_DEPTH= 5
 
     # const for small range torque offset data collection used for plotting stiffness
-    CONST_MIN_SMALL = math.radians(-6.0)
-    CONST_MAX_SMALL = math.radians(6.0)
+    CONST_MIN_SMALL = math.radians(-2.2)
+    CONST_MAX_SMALL = math.radians(2.2)
     CONST_DEGREE_INCREMENT_SMALL = math.radians(0.16)
     CONST_DEPTH_SMALL = 14
     CONST_POS_DIRECTION = 1
     CONST_NEG_DIRECTION = -1
 
     CONST_TOTAL_SAMPLE = 20
-    CONST_JOINT_UNDER_TESTING = 1 # change this to 0 or 1 depending on the joint you are testing
+    CONST_JOINT_UNDER_TESTING = 0 # change this to 0 or 1 depending on the joint you are testing
 
     robot_arm = robot()
 
@@ -144,7 +144,7 @@ class torque_offsets:
                 print "finished collecting samples"
 
                 # calculate average values
-                self.get_average_values(position_index, depth_index)
+                self.get_average_values(position_index, depthIndex)
 
                 # reset summation
                 self.reset_summation()
@@ -165,19 +165,18 @@ class torque_offsets:
 
         # change: depth loop, while loop condition, pass zero limit
 
-        # joint 1: from -90 to +90 (start all the way in, then go outward)
         maxDegree = 0
         if (jointUnderTesting == 0):
             if (direction == self.CONST_NEG_DIRECTION): 
-                maxDegree = self.CONST_MIN_SMALL
+                maxDegree = math.radians(-90.0)
             elif (direction == self.CONST_POS_DIRECTION):
-                maxDegree = self.CONST_MAX_SMALL
+                maxDegree = math.radians(90.0)
         elif (jointUnderTesting == 1):
             if (direction == self.CONST_NEG_DIRECTION): 
-                maxDegree = self.CONST_MIN_SMALL
+                maxDegree = math.radians(-2.2)
             elif (direction == self.CONST_POS_DIRECTION):
-                maxDegree = self.CONST_MAX_SMALL
-            
+                maxDegree = math.radians(2.2)
+ 
         time.sleep(2)
         self.reset_summation()
         i = 0
@@ -187,7 +186,7 @@ class torque_offsets:
         current_position = 0.0
         count = 0
 
-        while (not isMax):  #(i < 3):
+        while (not isMax): #(i < 5):
             for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
@@ -222,7 +221,8 @@ class torque_offsets:
             # time.sleep(.5) 
 
             # i += 1
-            # count =+ 1  
+            # count += 1 
+            # print "count", count 
  
         self.reset_summation()
         time.sleep(3)
@@ -235,6 +235,7 @@ class torque_offsets:
         print "--position recorded:", position_index
         self.robot_arm.position_i[-1] = position_index # replace the last element of position index so it starts with the same number as it ends on the previous direction 
         self.robot_arm.depth_index[-1] = depthIndex;
+        count -= 1
 
         if (direction == self.CONST_NEG_DIRECTION):
             current_position += self.CONST_DEGREE_INCREMENT_SMALL
@@ -244,8 +245,7 @@ class torque_offsets:
         print "curr position", current_position
         self.set_position(jointUnderTesting, current_position, depth)
 
-        while (count > -10): #(abs(current_position) >= 0):
-
+        while (count > -10):
             for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
                 self.get_joint_information(jointUnderTesting)
                 time.sleep(.02)
@@ -254,10 +254,10 @@ class torque_offsets:
             self.reset_summation()
 
             position_index -= 1
-            # if (position_index == 0):
-            #     self._robot.move_joint(numpy.array([0.0, 0.0, depth, 0.0, 0.0, 0.0]))
-            # else:
-            self.set_position(jointUnderTesting, current_position, depth)
+            if (position_index == 0):
+                self._robot.move_joint(numpy.array([0.0, 0.0, depth, 0.0, 0.0, 0.0]))
+            else:
+                self.set_position(jointUnderTesting, current_position, depth)
 
             print "--position recorded:", position_index
             if (direction == self.CONST_NEG_DIRECTION):
@@ -270,43 +270,27 @@ class torque_offsets:
 
             # below condition is to stop the arm at zero position. It is executed 
             # on the first direction of data collection
-            if (count == 0): #(abs(current_position) == 0.0):
+            if (count == 0): 
                 is_pass_zero = True;
-                if (jointUnderTesting == 0):
-                    if (direction == self.CONST_NEG_DIRECTION): # if joint 1, change this to CONST_POS_DIRECTION
-                        print "IN HERE"
-                        for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
-                            self.get_joint_information(jointUnderTesting)
-                            time.sleep(.02)
+                if (direction == self.CONST_NEG_DIRECTION):
+                    print "IN HERE"
+                    for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
+                        self.get_joint_information(jointUnderTesting)
+                        time.sleep(.02)
 
-                        self.get_average_values(position_index, depthIndex)
-                        self.reset_summation()
-                        break;
-                elif (jointUnderTesting == 1):
-                    if (direction == self.CONST_POS_DIRECTION): # if joint 1, change this to CONST_POS_DIRECTION
-                        for sampleIndex in range(self.CONST_TOTAL_SAMPLE): # draw 20 samples at each position
-                            self.get_joint_information(jointUnderTesting)
-                            time.sleep(.02)
-
-                        self.get_average_values(position_index, depthIndex)
-                        self.reset_summation()
-                        break;
-
+                    self.get_average_values(position_index, depthIndex)
+                    self.reset_summation()
+                    break;
+     
             # below condition is to run the instrument pass initial position. It is executed 
             # on the second direction of data collection
-            if (jointUnderTesting == 0):
-                if (direction == self.CONST_POS_DIRECTION and is_pass_zero):
-                    print "pass zero", pass_zero
-                    if (pass_zero == 10):
-                        break;
-                    pass_zero += 1
-            elif (jointUnderTesting == 1): 
-                if (direction == self.CONST_NEG_DIRECTION and is_pass_zero):
-                    print "pass zero", pass_zero
-                    if (pass_zero == 10):
-                        break;
-                    pass_zero += 1
-
+      
+            if (direction == self.CONST_POS_DIRECTION and is_pass_zero):
+                print "pass zero", pass_zero
+                if (pass_zero == 10):
+                    break;
+                pass_zero += 1
+   
             count -= 1
             print "count", count
 
@@ -356,15 +340,15 @@ class torque_offsets:
                     depth = 0.09 + (0.01 * depthIndex)
                     print "depth:", depth
                     if (jointUnderTesting == 0):
-                        print "testing joint 0 left direction"
+                        print "######### testing joint 0 left direction ##############"
                         self.collect_torque_offset_in_hysteresis(jointUnderTesting, self.CONST_NEG_DIRECTION, depth, depthIndex)
-                        print "testing joint 0 right direction"
+                        print "######### testing joint 0 right direction ##############"
                         self.collect_torque_offset_in_hysteresis(jointUnderTesting, self.CONST_POS_DIRECTION, depth, depthIndex)
                     elif (jointUnderTesting == 1):
-                        print "testing joint 1 outward direction"
-                        self.collect_torque_offset_in_hysteresis(jointUnderTesting, self.CONST_POS_DIRECTION, depth, depthIndex)
-                        print "testing joint 1 inward direction"
+                        print "######### testing joint 1 outward direction ##############"
                         self.collect_torque_offset_in_hysteresis(jointUnderTesting, self.CONST_NEG_DIRECTION, depth, depthIndex)
+                        print "######### testing joint 1 inward direction ##############"
+                        self.collect_torque_offset_in_hysteresis(jointUnderTesting, self.CONST_POS_DIRECTION, depth, depthIndex)
                 # file output
                 self.write_to_file(jointUnderTesting, True)
         
