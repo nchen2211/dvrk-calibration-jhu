@@ -229,7 +229,6 @@ def run(option):
                 Joint1Slope = create_data_files("StiffnessSlope", "1") 
                 Joint2Slope = create_data_files("StiffnessSlope", "2")
                 get_data_file(data_files, document)
-                break;
         elif (option == 6):
             if (document.startswith("hysteresis_processed")):
                 Joint1Slope = create_data_files("BacklashSlope", "1") 
@@ -541,7 +540,7 @@ def plotting_slope(document_joint_type, allDepths, allSlopes, option, plotLabel)
         plt.plot(allDepths, allSlopes, '.')
         x1, x2, y1, y2 = plt.axis()
         plt.axis((x1,0.3,0.0,0.3))
-    elif (option == 4):
+    elif (option == 4) or (option == 5):
         xaxis = numpy.arange(0.08, 0.23, 0.005)
         A,B,C,D = numpy.polyfit(allDepths, allSlopes, 3)
         plt.plot(xaxis, ((A*(xaxis**3)) + (B*(xaxis**2)) + (C*xaxis) + D), '-', label = plotLabel)
