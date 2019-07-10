@@ -287,7 +287,7 @@ def run(option):
             Joint2Slope.close()
 
 def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, document_joint_type):
-    for depth_index in range (1,14):
+    for depth_index in range (CONST_NUM_DEPTH_STIFFNESS):
 
         startIndex = -1
         endIndex = -1
@@ -297,32 +297,39 @@ def plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, docu
         
         prevIndex = -1
         endDirectionIndex = 0
-        for row in range(endIndex):
-            curr = reader[row][0]
-            if (prevIndex == curr):
+        for row in range(startIndex, endIndex):
+            curr = int(reader[row][0])
+            if (prevIndex == curr) and (prevIndex != 0):
                 endDirectionIndex = row - 1
                 break
             prevIndex = curr
 
         # one direction
-        for row in range(1, endDirectionIndex):
+        for row in range(startIndex, endDirectionIndex+1):
             joint_positions.append(float(reader[row][3]))
             joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         fit_fn = numpy.poly1d(fit)
-        plt.plot(joint_positions, fit_fn(joint_positions), '', label = ("Depth " + str(depth_index)))  
+        if (depth_index == 0) or (depth_index == CONST_NUM_DEPTH_STIFFNESS-1):
+            plt.plot(joint_positions, fit_fn(joint_positions), '', label = "Depth " + reader[startIndex][2][0:5])
+        else:
+            plt.plot(joint_positions, fit_fn(joint_positions), '')
         reset_joint_information(joint_positions, joint_efforts, joint_depth)
 
         # other direction
-        for row in range(endDirectionIndex + 1, endIndex):
+        for row in range(endDirectionIndex+1, endIndex+1):
             joint_positions.append(float(reader[row][3]))
             joint_efforts.append(float(reader[row][4]) - float(reader[row][5] ))
 
         fit = numpy.polyfit(joint_positions, joint_efforts, 1)
         fit_fn = numpy.poly1d(fit)
-        plt.plot(joint_positions, fit_fn(joint_positions), '', label = ("Depth " + str(depth_index)))  
+        if (depth_index  == 0) or (depth_index == CONST_NUM_DEPTH_STIFFNESS-1):
+            plt.plot(joint_positions, fit_fn(joint_positions), '', label = "Depth " + reader[startIndex][2][0:5])
+        else:
+            plt.plot(joint_positions, fit_fn(joint_positions), '')
         reset_joint_information(joint_positions, joint_efforts, joint_depth)
+        plt.legend()
 
 def plotting_torque_offset(reader, joint_efforts, joint_positions, joint_depth, all_depth_slopes, all_depth):
     
@@ -369,15 +376,15 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
 
         prevIndex = -1
         endDirectionIndex = 0
-        for row in range(endIndex):
-            curr = reader[row][0]
-            if (prevIndex == curr):
+        for row in range(startIndex, endIndex):
+            curr = int(reader[row][0])
+            if (prevIndex == curr) and (prevIndex != 0):
                 endDirectionIndex = row - 1
                 break
             prevIndex = curr
 
         # one direction
-        for row in range(1, endDirectionIndex):
+        for row in range(startIndex, endDirectionIndex+1):
             joint_positions.append(float(reader[row][3]))
             joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
@@ -386,7 +393,7 @@ def plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth,
         reset_joint_information(joint_positions, joint_efforts, joint_depth)
 
         # other direction
-        for row in range(endDirectionIndex + 1, endIndex):
+        for row in range(endDirectionIndex+1, endIndex+1):
             joint_positions.append(float(reader[row][3]))
             joint_efforts.append(float(reader[row][4]) - float(reader[row][5]))
 
