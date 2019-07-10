@@ -223,19 +223,23 @@ def run(option):
                 hysteresisProcessedFile = process_hysteresis_data()
         elif (option == 5):
             # process the file first, save it as hysteresis_processed_joint_x
-            if (doc.startswith("hysteresis_processed")):  #and hysteresisProcessedFile == 2):
+            if (document.startswith("hysteresis_processed")):  #and hysteresisProcessedFile == 2):
                 Joint1Data = create_data_files("Stiffness", "1")
                 Joint2Data = create_data_files("Stiffness", "2")
                 Joint1Slope = create_data_files("StiffnessSlope", "1") 
                 Joint2Slope = create_data_files("StiffnessSlope", "2")
-                get_data_file(data_files, doc) 
+                get_data_file(data_files, document)
                 break;
         elif (option == 6):
             if (document.startswith("hysteresis_processed")):
                 Joint1Slope = create_data_files("BacklashSlope", "1") 
                 Joint2Slope = create_data_files("BacklashSlope", "2") 
-                get_data_file(data_files, document) 
-    
+                get_data_file(data_files, document)
+
+    if len(data_files[0]) == 0 and len(data_files[1]) == 0:
+        print 'No input files found'
+        return
+
     for document_joint_type in range(len(data_files)):
         # for graphing torque offset slope
         all_depth_slopes = []
