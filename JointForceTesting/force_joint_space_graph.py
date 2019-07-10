@@ -269,7 +269,7 @@ def run(option):
                 plotting_stiffness(reader, joint_positions, joint_efforts, joint_depth, document_joint_type)
                 write_to_file("Joint position, radians", "Joint effort, N-m", option, document_joint_type, Joint1Data, Joint2Data)
                 plotting_stiffness_slope(reader, document_joint_type, joint_positions, joint_efforts, joint_depth, all_depth_slopes, all_depth)
-                write_to_file("Distance from RCM, m", "Stiffness, N-m/radians", option, document_joint_type, Joint1Slope, Joint2Slope)
+                write_to_file("Distance from RCM, m", "Slope, N-m/radians", option, document_joint_type, Joint1Slope, Joint2Slope)
             elif (option == 6):
                 plotting_backlash_slope(reader, joint_positions, joint_efforts, joint_depth, all_depth, all_depth_slopes, document_joint_type)
                 write_to_file("Depth, m", "Backlash, radians", option, document_joint_type, Joint1Slope, Joint2Slope)
@@ -282,7 +282,7 @@ def run(option):
         Joint2Data.close()
 
     if (option == 1 or option == 5 or option == 6):
-        if (hysteresisProcessedFile != 0):
+        #if (hysteresisProcessedFile != 0):
             Joint1Slope.close()
             Joint2Slope.close()
 
